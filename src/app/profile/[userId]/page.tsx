@@ -38,7 +38,7 @@ export default function UserProfilePage() {
                 const matches = await getMatches(user.id);
                 const match = matches.find(m =>
                     (m.user_a === userId || m.user_b === userId) &&
-                    m.status === 'accepted'
+                    m.status === 'active'
                 );
 
                 setMatchInfo({
@@ -75,7 +75,7 @@ export default function UserProfilePage() {
                 const matches = await getMatches(user.id);
                 const match = matches.find(m =>
                     (m.user_a === userId || m.user_b === userId) &&
-                    m.status === 'accepted'
+                    m.status === 'active'
                 );
                 setMatchInfo({
                     isMatched: true,
