@@ -108,6 +108,9 @@ export async function getDiscoveryProfiles(
         .from('profiles')
         .select('*')
         .neq('id', currentUserId)
+        // Only show completed profiles (users who finished onboarding)
+        .not('avatar_url', 'is', null)
+        .not('name', 'is', null)
         .gte('age', minAge)
         .lte('age', maxAge)
         .range(offset, offset + limit - 1);
