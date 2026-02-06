@@ -264,7 +264,7 @@ export default function UserProfilePage() {
                     <FloatingChatBubble
                         matchId={matchInfo.matchId}
                         partnerName={profile.name || 'User'}
-                        partnerAvatar={profile.avatar_url}
+                        partnerAvatar={profile.avatar_url || undefined}
                     />
                 )}
             </AnimatePresence>
