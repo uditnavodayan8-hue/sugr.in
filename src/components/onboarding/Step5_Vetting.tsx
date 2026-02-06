@@ -1,5 +1,5 @@
 'use client';
-import { Lock, Upload, Key, Check, X, RefreshCw, ScanFace, AlertCircle } from 'lucide-react';
+import { Lock, Upload, Key, Check, X, RefreshCw, ScanFace, AlertCircle, Camera, ImagePlus } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -13,6 +13,11 @@ interface StepProps {
 export default function Step5_Vetting({ onNext }: StepProps) {
     const { user } = useAuth();
     const { data, updateData, completeOnboarding, saving } = useOnboarding();
+
+    // --- Main Profile Photo State (NEW - Shows in feed) ---
+    const [profilePhoto, setProfilePhoto] = useState<string | null>(data.avatarUrl || null);
+    const profilePhotoRef = useRef<HTMLInputElement>(null);
+    const [uploadingProfile, setUploadingProfile] = useState(false);
 
     // --- Secret Album State ---
     const [uploads, setUploads] = useState<Record<number, string>>({});
@@ -59,6 +64,23 @@ export default function Step5_Vetting({ onNext }: StepProps) {
             delete newUploads[index];
             return newUploads;
         });
+    };
+
+    // Profile Photo Handler (Main photo shown in feed)
+    const handleProfilePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && user) {
+            setUploadingProfile(true);
+            setError(null);
+            try {
+                const url = await uploadFile(file, 'avatars', user.id);
+                setProfilePhoto(url);
+                updateData({ avatarUrl: url });
+            } catch (err) {
+                setError('Failed to upload profile photo');
+            }
+            setUploadingProfile(false);
+        }
     };
 
     // ID Doc Handlers
@@ -134,7 +156,7 @@ export default function Step5_Vetting({ onNext }: StepProps) {
         }
     };
 
-    const isComplete = idDoc && faceImage && Object.keys(uploads).length > 0;
+    const isComplete = profilePhoto && idDoc && faceImage && Object.keys(uploads).length > 0;
 
     return (
         <div className="space-y-10">
@@ -152,10 +174,52 @@ export default function Step5_Vetting({ onNext }: StepProps) {
             )}
 
             {/* Hidden Inputs */}
+            <input type="file" ref={profilePhotoRef} className="hidden" accept="image/*" onChange={handleProfilePhotoChange} />
             <input type="file" ref={albumInputRef} className="hidden" accept="image/*" onChange={handleAlbumFileChange} />
             <input type="file" ref={idInputRef} className="hidden" accept="image/*" onChange={handleIdChange} />
 
             <div className="space-y-6">
+                {/* 0. Main Profile Photo (NEW - Shows in Discovery Feed) */}
+                <div className="space-y-3">
+                    <h4 className="text-xs text-zinc-500 uppercase tracking-widest font-bold flex items-center gap-2">
+                        <Camera size={12} /> Profile Photo
+                        <span className="text-[#F7E7CE]">*Required</span>
+                    </h4>
+                    <p className="text-xs text-zinc-600">This photo will be shown to others in the discovery feed</p>
+
+                    <div
+                        onClick={() => profilePhotoRef.current?.click()}
+                        className={cn(
+                            "relative aspect-[3/4] max-w-[200px] mx-auto rounded-2xl border-2 border-dashed cursor-pointer overflow-hidden group transition-all duration-300",
+                            profilePhoto ? "border-[#F7E7CE] bg-zinc-900" : "border-zinc-700 hover:border-zinc-500 bg-zinc-950"
+                        )}
+                    >
+                        {uploadingProfile && (
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                                <div className="w-8 h-8 border-2 border-[#F7E7CE] border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        )}
+
+                        {profilePhoto ? (
+                            <>
+                                <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <span className="text-xs text-white font-medium">Change Photo</span>
+                                </div>
+                                <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#F7E7CE] flex items-center justify-center">
+                                    <Check size={14} className="text-black" />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                                <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center group-hover:bg-zinc-800 transition-colors">
+                                    <ImagePlus size={24} className="text-zinc-500 group-hover:text-[#F7E7CE] transition-colors" />
+                                </div>
+                                <span className="text-xs text-zinc-500 group-hover:text-zinc-300">Add Photo</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
                 {/* 1. ID Verification */}
                 <div
                     onClick={handleIdClick}
