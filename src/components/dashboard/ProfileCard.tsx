@@ -10,6 +10,7 @@ import { createSwipe } from '@/lib/services/matches';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import MatchCelebration from './MatchCelebration';
 
 interface ProfileCardProps {
     profile: Profile;
@@ -23,10 +24,12 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
     const [swiping, setSwiping] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const [photoIndex, setPhotoIndex] = useState(0);
+    const [showMatch, setShowMatch] = useState(false);
 
     // Reset photo index when profile changes
     useEffect(() => {
         setPhotoIndex(0);
+        setShowMatch(false);
     }, [profile.id]);
 
     // Calculate available photos or fallback to avatar
@@ -55,13 +58,11 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
             const { isMatch } = await createSwipe(user.id, profile.id, action);
 
             if (isMatch) {
-                toast.success("It's a Match", {
-                    description: `You matched with ${profile.name}`,
-                });
-                setTimeout(() => router.push('/chat'), 800);
+                setShowMatch(true);
+                // Don't call onRemove yet
+            } else {
+                onRemove?.(profile.id);
             }
-
-            onRemove?.(profile.id);
         } catch {
             toast.error('Something went wrong');
         } finally {
@@ -330,6 +331,16 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                     )}
                 </AnimatePresence>
             </div>
+
+            {showMatch && (
+                <MatchCelebration
+                    partner={profile}
+                    onClose={() => {
+                        setShowMatch(false);
+                        onRemove?.(profile.id);
+                    }}
+                />
+            )}
         </div>
     );
 }
