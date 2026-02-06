@@ -8,8 +8,10 @@ import { useAuth } from '@/context/AuthContext';
 import { getProfile, Profile } from '@/lib/services/profiles';
 import { getMatches, Match, createSwipe } from '@/lib/services/matches';
 import { getProfileFeed, Post } from '@/lib/services/feed';
-import ProfileFeed from '@/components/profile/ProfileFeed';
+import PhotoGallery from '@/components/profile/PhotoGallery';
 import FloatingChatBubble from '@/components/chat/FloatingChatBubble';
+
+
 import { toast } from 'sonner';
 import { createNotification } from '@/lib/services/notifications';
 
@@ -238,7 +240,7 @@ export default function UserProfilePage() {
 
             {/* Feed Tabs */}
             <div className="flex border-b border-white/[0.06] mb-1">
-                {['Posts', 'Vibes', 'Interests'].map((tab, i) => (
+                {['Photos', 'Vibes', 'Interests'].map((tab, i) => (
                     <button
                         key={tab}
                         className={cn(
@@ -251,12 +253,21 @@ export default function UserProfilePage() {
                 ))}
             </div>
 
-            {/* Profile Feed */}
-            <ProfileFeed
-                posts={posts}
-                isUnlocked={matchInfo.isMatched}
-                onRequestAccess={handleRequestAccess}
-            />
+            {/* Photo Gallery (Replaces Posts) */}
+            <div className="p-1">
+                {profile.photos && profile.photos.length > 0 ? (
+                    <PhotoGallery photos={profile.photos} />
+                ) : (
+                    <PhotoGallery photos={[{
+                        id: 'main',
+                        url: profile.avatar_url || 'https://via.placeholder.com/400',
+                        profile_id: profile.id,
+                        position: 0,
+                        is_primary: true,
+                        created_at: new Date().toISOString()
+                    }]} />
+                )}
+            </div>
 
             {/* Floating Chat Bubble (only if matched) */}
             <AnimatePresence>

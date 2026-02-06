@@ -40,8 +40,9 @@ const supabase = getSupabaseClient();
 export async function getProfile(userId: string): Promise<Profile | null> {
     const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, photos:profile_photos(*)')
         .eq('id', userId)
+        .order('position', { foreignTable: 'profile_photos', ascending: true })
         .single();
 
     if (error) {
