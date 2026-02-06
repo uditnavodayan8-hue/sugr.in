@@ -1,5 +1,7 @@
 import { getSupabaseClient } from '../supabase/client';
 
+import { ProfilePhoto } from './profilePhotos';
+
 export interface Profile {
     id: string;
     role: 'Provider' | 'Protégé';
@@ -18,6 +20,7 @@ export interface Profile {
     };
     trust_score: number;
     created_at: string;
+    photos?: ProfilePhoto[];
 }
 
 export interface DiscoveryFilters {
@@ -106,14 +109,15 @@ export async function getDiscoveryProfiles(
 
     let query = supabase
         .from('profiles')
-        .select('*')
+        .select('*, photos:profile_photos(*)')
         .neq('id', currentUserId)
         // Only show completed profiles (users who finished onboarding)
         .not('avatar_url', 'is', null)
         .not('name', 'is', null)
         .gte('age', minAge)
         .lte('age', maxAge)
-        .range(offset, offset + limit - 1);
+        .range(offset, offset + limit - 1)
+        .order('position', { foreignTable: 'profile_photos', ascending: true });
 
     // Filter by role if specified
     if (role) {
@@ -141,8 +145,9 @@ export async function getDiscoveryProfiles(
 export async function getProfileById(profileId: string): Promise<Profile | null> {
     const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, photos:profile_photos(*)')
         .eq('id', profileId)
+        .order('position', { foreignTable: 'profile_photos', ascending: true })
         .single();
 
     if (error) {

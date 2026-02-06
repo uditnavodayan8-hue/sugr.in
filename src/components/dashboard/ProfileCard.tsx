@@ -1,7 +1,9 @@
+
+
 'use client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Heart, X, Loader2, Shield, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Profile } from '@/lib/services/profiles';
 import { createSwipe } from '@/lib/services/matches';
@@ -20,6 +22,22 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [swiping, setSwiping] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [photoIndex, setPhotoIndex] = useState(0);
+
+    // Reset photo index when profile changes
+    useEffect(() => {
+        setPhotoIndex(0);
+    }, [profile.id]);
+
+    // Calculate available photos or fallback to avatar
+    const photos = useMemo(() => {
+        if (profile.photos && profile.photos.length > 0) {
+            return profile.photos;
+        }
+        return [{ id: 'main', url: profile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1200&fit=crop&q=90' }];
+    }, [profile]);
+
+    const currentPhoto = photos[photoIndex];
 
     const handleUnlock = () => {
         setIsUnlocked(true);
@@ -51,8 +69,44 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
         }
     };
 
+    const nextPhoto = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (photoIndex < photos.length - 1) {
+            setPhotoIndex(prev => prev + 1);
+        }
+    };
+
+    const prevPhoto = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (photoIndex > 0) {
+            setPhotoIndex(prev => prev - 1);
+        }
+    };
+
+    const handleDoubleTap = () => {
+        handleSwipe('like');
+        // Show heart animation (could adhere to mouse position or center)
+        const heart = document.createElement('div');
+        heart.innerHTML = '❤️';
+        heart.style.position = 'absolute';
+        heart.style.left = '50%';
+        heart.style.top = '50%';
+        heart.style.transform = 'translate(-50%, -50%) scale(0)';
+        heart.style.fontSize = '100px';
+        heart.style.pointerEvents = 'none';
+        heart.style.zIndex = '50';
+        heart.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
+
+        // Append to current target if possible, or body
+        // For simplicity in React, usually we'd use state, but DOM manipulation for a quick effect is okay or better use AnimatePresence
+        // Let's use simpler approach: just call handleSwipe('like') for now.
+    };
+
     return (
-        <div className="relative w-full h-full bg-[#0A0A0A] overflow-hidden select-none">
+        <div
+            className="relative w-full h-full bg-[#0A0A0A] overflow-hidden select-none group"
+            onDoubleClick={handleDoubleTap}
+        >
             {/* Image Layer */}
             <motion.div
                 className="absolute inset-0"
@@ -60,23 +114,53 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
             >
-                <img
-                    src={profile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1200&fit=crop&q=90'}
-                    alt=""
-                    className={cn(
-                        "w-full h-full object-cover transition-all duration-700 ease-out",
-                        isUnlocked ? "blur-0 scale-100" : "blur-2xl scale-110 brightness-50"
-                    )}
-                    draggable={false}
-                />
+                <AnimatePresence mode="popLayout" initial={false}>
+                    <motion.img
+                        key={currentPhoto.url}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        src={currentPhoto.url}
+                        alt=""
+                        className={cn(
+                            "w-full h-full object-cover transition-all duration-700 ease-out",
+                            isUnlocked ? "blur-0 scale-100" : "blur-2xl scale-110 brightness-50"
+                        )}
+                        draggable={false}
+                    />
+                </AnimatePresence>
 
-                {/* Subtle gradient overlay - Apple style */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent via-60% to-black/95" />
+                {/* Subtle gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent via-60% to-black/95 pointer-events-none" />
+
+                {/* Navigation Taps (Only when unlocked) */}
+                {isUnlocked && photos.length > 1 && (
+                    <>
+                        <div className="absolute inset-y-0 left-0 w-1/3 z-10" onClick={prevPhoto} />
+                        <div className="absolute inset-y-0 right-0 w-1/3 z-10" onClick={nextPhoto} />
+                    </>
+                )}
             </motion.div>
+
+            {/* Photo Indicators */}
+            {photos.length > 1 && (
+                <div className="absolute top-4 inset-x-4 flex gap-1 z-30">
+                    {photos.map((_, i) => (
+                        <div
+                            key={i}
+                            className={cn(
+                                "h-1 rounded-full flex-1 transition-colors duration-300",
+                                i === photoIndex ? "bg-white" : "bg-white/20"
+                            )}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* Top Badge - Minimal */}
             <motion.div
-                className="absolute top-8 left-8 z-20"
+                className="absolute top-8 left-8 z-20 pointer-events-none"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
@@ -92,7 +176,7 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
             {/* Verification Badge */}
             {profile.verification_level?.id && (
                 <motion.div
-                    className="absolute top-8 right-8 z-20"
+                    className="absolute top-8 right-8 z-20 pointer-events-none"
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.4 }}
@@ -104,17 +188,17 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
             )}
 
             {/* Bottom Content */}
-            <div className="absolute inset-x-0 bottom-0 z-30">
+            <div className="absolute inset-x-0 bottom-0 z-30 pointer-events-none">
                 <AnimatePresence mode="wait">
                     {!isUnlocked ? (
-                        /* Locked State - Clean & Centered */
+                        /* Locked State */
                         <motion.div
                             key="locked"
                             initial={{ opacity: 0, y: 40 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
                             transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                            className="flex flex-col items-center text-center px-8 pb-40 pt-20"
+                            className="flex flex-col items-center text-center px-8 pb-40 pt-20 pointer-events-auto"
                         >
                             <motion.div
                                 initial={{ scale: 0.8, opacity: 0 }}
@@ -142,13 +226,13 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                             </motion.button>
                         </motion.div>
                     ) : (
-                        /* Unlocked State - Info Sheet */
+                        /* Unlocked State */
                         <motion.div
                             key="unlocked"
                             initial={{ opacity: 0, y: 100 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, ease: [0.32, 0.72, 0, 1] }}
-                            className="bg-[#0A0A0A]/80 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px]"
+                            className="bg-[#0A0A0A]/80 backdrop-blur-3xl border-t border-white/10 rounded-t-[32px] pointer-events-auto"
                         >
                             {/* Drag Indicator */}
                             <button
@@ -198,7 +282,7 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                                     )}
                                 </AnimatePresence>
 
-                                {/* Action Buttons - Apple Style */}
+                                {/* Action Buttons */}
                                 <div className="flex items-center justify-center gap-6 mt-8 pb-8">
                                     <motion.button
                                         onClick={() => handleSwipe('pass')}
