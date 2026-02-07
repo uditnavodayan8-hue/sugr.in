@@ -1,10 +1,9 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { X, ArrowRight, AlertCircle, KeyRound } from 'lucide-react';
+import { useState } from 'react';
+import { X, ArrowRight, AlertCircle, Mail, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -12,72 +11,19 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-    const router = useRouter();
     const [email, setEmail] = useState('');
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
-    const [verifying, setVerifying] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [timer, setTimer] = useState(0);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const supabase = getSupabaseClient();
 
-    // Timer countdown
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (timer > 0) {
-            interval = setInterval(() => {
-                setTimer((prev) => prev - 1);
-            }, 1000);
-        }
-        return () => clearInterval(interval);
-    }, [timer]);
-
-    // Handle OTP input
-    const handleOtpChange = (index: number, value: string) => {
-        if (value.length > 1) {
-            // Handle paste
-            const digits = value.replace(/\D/g, '').slice(0, 6).split('');
-            const newOtp = [...otp];
-            digits.forEach((digit, i) => {
-                if (index + i < 6) newOtp[index + i] = digit;
-            });
-            setOtp(newOtp);
-            const nextIndex = Math.min(index + digits.length, 5);
-            inputRefs.current[nextIndex]?.focus();
-        } else {
-            const newOtp = [...otp];
-            newOtp[index] = value.replace(/\D/g, '');
-            setOtp(newOtp);
-
-            // Auto-focus next input
-            if (value && index < 5) {
-                inputRefs.current[index + 1]?.focus();
-            }
-        }
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-        }
-    };
-
-    // Auto-verify when all digits entered
-    useEffect(() => {
-        if (otp.every(d => d) && sent) {
-            handleVerifyOtp();
-        }
-    }, [otp, sent]);
-
-    const handleSendOtp = async (e: React.FormEvent) => {
+    const handleSendMagicLink = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
-        const trimmedEmail = email.trim();
+        const trimmedEmail = email.trim().toLowerCase();
         setEmail(trimmedEmail);
 
         try {
@@ -91,75 +37,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             if (error) throw error;
             setSent(true);
-            setTimer(60); // Start 60s cooldown
-            toast.success('Verification Code Sent', {
-                description: 'Check your email for the 6-digit code.',
+            toast.success('Magic Link Sent!', {
+                description: 'Check your email and click the link to sign in.',
             });
         } catch (err: any) {
-            console.error('OTP Send Error:', err);
-            const msg = err.message || 'Failed to send code. Please try again.';
+            console.error('Auth Error:', err);
+            const msg = err.message || 'Failed to send link. Please try again.';
             setError(msg);
-            toast.error('Failed to send code', { description: msg });
+            toast.error('Failed to send link', { description: msg });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleVerifyOtp = async () => {
-        const code = otp.join('');
-        if (code.length !== 6) return;
-
-        setVerifying(true);
-        setError(null);
-
-        try {
-            const { data, error } = await supabase.auth.verifyOtp({
-                email,
-                token: code,
-                type: 'email',
-            });
-
-            if (error) throw error;
-
-            toast.success('Access Granted!');
-
-            // Check onboarding status
-            if (data.user) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('name, avatar_url')
-                    .eq('id', data.user.id)
-                    .single();
-
-                if (profile?.name && profile?.avatar_url) {
-                    router.push('/dashboard');
-                } else {
-                    router.push('/onboarding');
-                }
-            }
-        } catch (err: any) {
-            console.error('OTP Verify Error:', err);
-            const msg = err.message || 'Invalid code. Please try again.';
-            setError(msg);
-            setOtp(['', '', '', '', '', '']);
-            inputRefs.current[0]?.focus();
-            toast.error('Verification Failed', { description: msg });
-        } finally {
-            setVerifying(false);
-        }
-    };
-
     const resetFlow = () => {
         setSent(false);
-        setOtp(['', '', '', '', '', '']);
         setError(null);
-        setTimer(0);
-    };
-
-    // Resend handler
-    const handleResend = (e: React.MouseEvent) => {
-        e.preventDefault(); // Prevent form submission if inside form
-        handleSendOtp(e as unknown as React.FormEvent);
     };
 
     if (!isOpen) return null;
@@ -186,51 +79,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 )}
 
                 {sent ? (
-                    <div className="space-y-6">
-                        {/* OTP Icon */}
-                        <div className="w-16 h-16 bg-[#F7E7CE]/10 rounded-full flex items-center justify-center mx-auto">
-                            <KeyRound size={32} className="text-[#F7E7CE]" />
+                    <div className="space-y-6 text-center">
+                        {/* Success Icon */}
+                        <div className="w-20 h-20 bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+                            <CheckCircle size={40} className="text-green-500" />
                         </div>
 
-                        <div className="text-center">
-                            <h3 className="text-white text-lg font-bold mb-2">Enter Code</h3>
-                            <p className="text-zinc-400 text-sm">We sent a 6-digit code to <span className="text-white">{email}</span></p>
+                        <div>
+                            <h3 className="text-white text-lg font-bold mb-2">Check Your Email</h3>
+                            <p className="text-zinc-400 text-sm">
+                                We sent a login link to<br />
+                                <span className="text-white font-medium">{email}</span>
+                            </p>
                         </div>
 
-                        {/* OTP Input */}
-                        <div className="flex justify-center gap-2">
-                            {otp.map((digit, index) => (
-                                <input
-                                    key={index}
-                                    ref={(el) => { inputRefs.current[index] = el; }}
-                                    type="text"
-                                    inputMode="numeric"
-                                    maxLength={6}
-                                    value={digit}
-                                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                                    onKeyDown={(e) => handleKeyDown(index, e)}
-                                    className="w-11 h-14 bg-black border border-zinc-700 rounded-xl text-center text-white text-xl font-bold focus:border-[#F7E7CE] outline-none transition-colors"
-                                    autoFocus={index === 0}
-                                />
-                            ))}
-                        </div>
-
-                        {verifying && (
-                            <p className="text-center text-[#F7E7CE] text-sm animate-pulse">Verifying...</p>
-                        )}
-
-                        {/* Resend Timer */}
-                        <div className="text-center">
-                            {timer > 0 ? (
-                                <p className="text-zinc-500 text-xs">Resend code in {timer}s</p>
-                            ) : (
-                                <button
-                                    onClick={handleResend}
-                                    className="text-xs text-[#F7E7CE] hover:underline"
-                                >
-                                    Resend Code
-                                </button>
-                            )}
+                        <div className="bg-zinc-800/50 p-4 rounded-xl">
+                            <p className="text-zinc-300 text-xs">
+                                📧 Click the <strong>magic link</strong> in the email to sign in instantly.
+                            </p>
                         </div>
 
                         <button
@@ -242,14 +108,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         </button>
                     </div>
                 ) : (
-                    <form onSubmit={handleSendOtp} className="space-y-4">
+                    <form onSubmit={handleSendMagicLink} className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Email</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="private@example.com"
+                                placeholder="you@example.com"
                                 className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-[#F7E7CE] outline-none"
                                 required
                                 autoFocus
@@ -258,24 +124,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                         <button
                             type="submit"
-                            disabled={loading || (timer > 0) || !email}
+                            disabled={loading || !email}
                             className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Sending...' : (timer > 0 ? `Wait ${timer}s` : 'Get Verification Code')} <ArrowRight size={14} />
+                            {loading ? (
+                                <span className="animate-pulse">Sending...</span>
+                            ) : (
+                                <>Send Magic Link <Mail size={14} /></>
+                            )}
                         </button>
 
-                        <div className="relative py-2">
-                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-800"></div></div>
-                            <div className="relative flex justify-center text-xs uppercase"><span className="bg-zinc-900 px-2 text-zinc-600">Or</span></div>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setSent(true)}
-                            className="w-full py-3 bg-zinc-800 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <KeyRound size={16} /> I already have a code
-                        </button>
+                        <p className="text-center text-zinc-500 text-[10px] mt-4">
+                            No password needed. We'll email you a secure link.
+                        </p>
                     </form>
                 )}
             </motion.div>
