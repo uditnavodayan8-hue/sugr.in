@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { X, Mail, ArrowRight, AlertCircle, KeyRound } from 'lucide-react';
+import { X, ArrowRight, AlertCircle, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
@@ -58,7 +58,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (otp.every(d => d) && sent) {
             handleVerifyOtp();
         }
-    }, [otp]);
+    }, [otp, sent]);
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -69,8 +69,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    // Don't create magic link, just send OTP code
                     shouldCreateUser: true,
+                    emailRedirectTo: `${window.location.origin}/auth/confirm`,
                 }
             });
 
@@ -199,7 +199,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         <button
                             type="button"
                             onClick={resetFlow}
-                            className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest"
+                            className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest mt-4"
                         >
                             Use different email
                         </button>
@@ -225,6 +225,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {loading ? 'Sending...' : 'Get Verification Code'} <ArrowRight size={14} />
+                        </button>
+
+                        <div className="relative py-2">
+                            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-800"></div></div>
+                            <div className="relative flex justify-center text-xs uppercase"><span className="bg-zinc-900 px-2 text-zinc-600">Or</span></div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setSent(true)}
+                            className="w-full py-3 bg-zinc-800 text-white rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <KeyRound size={16} /> I already have a code
                         </button>
                     </form>
                 )}
