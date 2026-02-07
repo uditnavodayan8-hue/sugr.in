@@ -8,12 +8,15 @@ import { motion } from 'framer-motion';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 
+import { useRouter } from 'next/navigation';
+
 interface AuthModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+    const router = useRouter();
     const [mode, setMode] = useState<'options' | 'email' | 'phone' | 'otp'>('options');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -125,7 +128,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             toast.success('Signed In!', {
                 description: 'Welcome back.',
             });
-            onClose(); // Close modal on success (middleware handles redirect)
+            onClose();
+            // Force a hard redirect to ensure cookies are sent and middleware runs fresh
+            window.location.href = '/dashboard';
         } catch (err: any) {
             console.error('Verify Error:', err);
             const msg = err.message || 'Invalid code. Please try again.';

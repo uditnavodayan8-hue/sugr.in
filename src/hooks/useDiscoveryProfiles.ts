@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+
 import { getDiscoveryProfiles, Profile, DiscoveryFilters } from '@/lib/services/profiles';
 import { getSwipedProfileIds } from '@/lib/services/matches';
+import { useLocation } from '@/hooks/useLocation';
 
 export function useDiscoveryProfiles(filters: DiscoveryFilters = {}) {
     const { user } = useAuth();
+    const { lat, lng } = useLocation();
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,8 @@ export function useDiscoveryProfiles(filters: DiscoveryFilters = {}) {
             // Fetch profiles
             const newProfiles = await getDiscoveryProfiles(user.id, {
                 ...filters,
+                lat: lat || undefined,
+                lng: lng || undefined,
                 limit,
                 offset: isLoadMore ? offset : 0,
             });
@@ -57,8 +62,10 @@ export function useDiscoveryProfiles(filters: DiscoveryFilters = {}) {
     };
 
     useEffect(() => {
+        // Only load if location is determined OR if we want to allow fallback immediately
+        // For now, let's load immediately. If location comes later, it triggers a re-fetch.
         loadProfiles();
-    }, [user, filters.role, filters.city, filters.minAge, filters.maxAge]);
+    }, [user, filters.role, filters.city, filters.minAge, filters.maxAge, lat, lng]);
 
     const loadMore = () => {
         if (!loading && hasMore) {

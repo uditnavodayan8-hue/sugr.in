@@ -1,18 +1,29 @@
 'use client';
+
 import { useState } from 'react';
-import { useDiscoveryProfiles } from '@/hooks/useDiscoveryProfiles';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Loader2, RefreshCw } from 'lucide-react';
 import ProfileCard from '@/components/dashboard/ProfileCard';
 import { ProfileCardSkeleton } from '@/components/dashboard/ProfileCardSkeleton';
-import { motion } from 'framer-motion';
-import { User, Loader2, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 import BroadcastFeed from '@/components/dashboard/BroadcastFeed';
 import { cn } from '@/lib/utils';
+import ProfileDossier from '@/components/ProfileDossier';
 
-export default function Dashboard() {
-    const { user } = useAuth();
-    const { profiles, loading, error, hasMore, loadMore, refresh } = useDiscoveryProfiles();
+interface DashboardClientProps {
+    initialProfiles: any[];
+    userRole: string | null;
+}
+
+export default function DashboardClient({ initialProfiles, userRole }: DashboardClientProps) {
+    const [profiles, setProfiles] = useState(initialProfiles);
     const [viewMode, setViewMode] = useState<'dossier' | 'broadcast'>('dossier');
+    const [loading, setLoading] = useState(false);
+
+    const handleRefresh = async () => {
+        setLoading(true);
+        // Implement refresh logic here if needed, or just reload the page for server refresh
+        window.location.reload();
+    };
 
     return (
         <main className="fixed inset-0 bg-[#0A0A0A] text-white overflow-hidden flex flex-col">
@@ -51,26 +62,10 @@ export default function Dashboard() {
                 </div>
             ) : (
                 /* Feed Container */
-                <div className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar">
-                    {/* Loading State */}
-                    {loading && profiles.length === 0 && (
-                        <section className="h-full w-full snap-start relative">
-                            <ProfileCardSkeleton />
-                            <div className="absolute inset-0 flex items-center justify-center z-40 bg-black/10">
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/10"
-                                >
-                                    <Loader2 className="w-4 h-4 animate-spin text-white/70" />
-                                    <span className="text-xs font-medium text-white/70">Finding matches...</span>
-                                </motion.div>
-                            </div>
-                        </section>
-                    )}
+                <div className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth no-scrollbar pt-20 pb-20">
 
                     {/* Empty State */}
-                    {!loading && profiles.length === 0 && (
+                    {profiles.length === 0 && (
                         <section className="h-full w-full snap-start flex flex-col items-center justify-center p-8">
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
@@ -85,12 +80,12 @@ export default function Dashboard() {
                                     We're curating profiles for you. Check back in a bit.
                                 </p>
                                 <motion.button
-                                    onClick={refresh}
+                                    onClick={handleRefresh}
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                     className="flex items-center gap-2 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-[15px] text-white/70 hover:bg-white/10 transition-colors"
                                 >
-                                    <RefreshCw size={16} />
+                                    {loading ? <Loader2 className="animate-spin" size={16} /> : <RefreshCw size={16} />}
                                     Refresh
                                 </motion.button>
                             </motion.div>
@@ -99,17 +94,15 @@ export default function Dashboard() {
 
                     {/* Profile Cards */}
                     {profiles.map((profile) => (
-                        <section key={profile.id} className="h-full w-full snap-start">
-                            <ProfileCard profile={profile} />
+                        <section key={profile.id} className="h-full w-full snap-start flex items-center justify-center p-4">
+                            {/* Use ProfileDossier or ProfileCard? User asked for ProfileDossier */}
+                            <ProfileDossier userId={profile.id} className="w-full max-w-md h-auto max-h-full" />
+                            {/* Or render ProfileCard if it's the intended swipe card. 
+                                The user said "ProfileDossier ... displays their 'Stalkable' info".
+                                The old dashboard used ProfileCard. I'll use ProfileDossier as requested for the overhaul.
+                            */}
                         </section>
                     ))}
-
-                    {/* Load More */}
-                    {hasMore && profiles.length > 0 && (
-                        <section className="h-full w-full snap-start relative">
-                            <ProfileCardSkeleton />
-                        </section>
-                    )}
                 </div>
             )}
         </main>

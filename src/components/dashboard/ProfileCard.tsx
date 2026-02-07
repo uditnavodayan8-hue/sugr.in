@@ -139,6 +139,12 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                         <span className="flex items-center gap-1">
                             <MapPin size={12} /> {profile.city}
                         </span>
+                        {profile.dist_meters !== undefined && (
+                            <>
+                                <span>•</span>
+                                <span>{Math.round(profile.dist_meters / 1000)}km</span>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

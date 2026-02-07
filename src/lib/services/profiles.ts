@@ -17,6 +17,7 @@ export interface Profile {
     lifestyle_tier: 'Minimalist' | 'Moderate' | 'High' | 'Ultra-High' | null;
     location_lat?: number;
     location_lng?: number;
+    dist_meters?: number; // Distance from current user (in meters)
     is_verified_provider: boolean;
 
     verification_level: {
@@ -35,6 +36,8 @@ export interface DiscoveryFilters {
     minAge?: number;
     maxAge?: number;
     city?: string;
+    lat?: number;
+    lng?: number;
     limit?: number;
     offset?: number;
 }
@@ -113,8 +116,39 @@ export async function getDiscoveryProfiles(
     currentUserId: string,
     filters: DiscoveryFilters = {}
 ): Promise<Profile[]> {
-    const { role, minAge = 18, maxAge = 99, city, limit = 20, offset = 0 } = filters;
+    const { role, minAge = 18, maxAge = 99, city, lat, lng, limit = 20, offset = 0 } = filters;
 
+    // IF Location is provided, use Geospatial Search (RPC)
+    if (lat !== undefined && lng !== undefined) {
+        const { data, error } = await supabase.rpc('search_users_nearby', {
+            lat,
+            long: lng,
+            radius_meters: 500000, // 500km default for feed
+        });
+
+        if (error) {
+            console.error('Error fetching geospatial profiles:', error);
+            return [];
+        }
+
+        // Filter locally for now (RPC doesn't have all filters yet)
+        // ideally RPC should accept filters, but for v1 this is fine
+        let profiles = (data as Profile[]) || [];
+
+        // Apply other filters locally
+        profiles = profiles.filter(p => {
+            if (p.id === currentUserId) return false;
+            if (!p.avatar_url || !p.name) return false;
+            if (p.age < minAge || p.age > maxAge) return false;
+            if (role && p.role !== role) return false;
+            if (city && p.city !== city) return false;
+            return true;
+        });
+
+        return profiles.slice(offset, offset + limit);
+    }
+
+    // FALLBACK: Standard Query
     let query = supabase
         .from('profiles')
         .select('*, photos:profile_photos(*)')
@@ -164,4 +198,40 @@ export async function getProfileById(profileId: string): Promise<Profile | null>
     }
 
     return data as Profile;
+}
+
+/**
+ * Update user's location (Geo-Spatial)
+ */
+export async function updateUserLocation(lat: number, lng: number): Promise<void> {
+    const { error } = await supabase.rpc('update_user_location', {
+        lat,
+        long: lng,
+    });
+
+    if (error) {
+        console.error('Error updating location:', error);
+    }
+}
+
+/**
+ * Search users nearby (Geo-Spatial)
+ */
+export async function searchProfilesNearby(
+    lat: number,
+    lng: number,
+    radiusMeters: number = 50000 // 50km
+): Promise<Profile[]> {
+    const { data, error } = await supabase.rpc('search_users_nearby', {
+        lat,
+        long: lng,
+        radius_meters: radiusMeters,
+    });
+
+    if (error) {
+        console.error('Error searching nearby users:', error);
+        return [];
+    }
+
+    return (data as Profile[]) || [];
 }
