@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import DashboardClient from '@/components/dashboard/DashboardClient';
+import DiscoveryFeed from '@/components/discovery/DiscoveryFeed';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export default async function DashboardPage() {
     const cookieStore = await cookies();
@@ -20,9 +21,7 @@ export default async function DashboardPage() {
                             cookieStore.set(name, value, options)
                         );
                     } catch {
-                        // The `setAll` method was called from a Server Component.
-                        // This can be ignored if you have middleware refreshing
-                        // user sessions.
+                        // Server Component context
                     }
                 },
             },
@@ -43,23 +42,41 @@ export default async function DashboardPage() {
         .eq('id', user.id)
         .single();
 
-    // Redirect if no role. Middleware should catch this, but double check here.
     if (!profile?.role) {
         redirect('/onboarding');
     }
 
-    const userRole = profile.role;
-
-    // Fetch profiles with opposite role
-    const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('role', userRole)
-        .limit(20);
+    // Fetch active ads (not expired) with user info
+    const { data: ads, error } = await supabase
+        .from('ads')
+        .select(`
+            *,
+            profiles:user_id (
+                full_name,
+                avatar_url,
+                role
+            )
+        `)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(50);
 
     if (error) {
-        console.error("Error fetching profiles:", error);
+        console.error("Error fetching ads:", error);
     }
 
-    return <DashboardClient initialProfiles={profiles || []} userRole={userRole} />;
+    // Transform ads to include user info at top level
+    const transformedAds = (ads || []).map(ad => ({
+        ...ad,
+        user_name: ad.profiles?.full_name,
+        user_avatar: ad.profiles?.avatar_url,
+        user_role: ad.profiles?.role,
+    }));
+
+    return (
+        <main className="relative">
+            <DashboardHeader />
+            <DiscoveryFeed initialAds={transformedAds} />
+        </main>
+    );
 }
