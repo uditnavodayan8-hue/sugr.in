@@ -19,9 +19,21 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const [verifying, setVerifying] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [timer, setTimer] = useState(0);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const supabase = getSupabaseClient();
+
+    // Timer countdown
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (timer > 0) {
+            interval = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [timer]);
 
     // Handle OTP input
     const handleOtpChange = (index: number, value: string) => {
@@ -65,9 +77,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setLoading(true);
         setError(null);
 
+        const trimmedEmail = email.trim();
+        setEmail(trimmedEmail);
+
         try {
             const { error } = await supabase.auth.signInWithOtp({
-                email,
+                email: trimmedEmail,
                 options: {
                     shouldCreateUser: true,
                     emailRedirectTo: `${window.location.origin}/auth/confirm`,
@@ -76,6 +91,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             if (error) throw error;
             setSent(true);
+            setTimer(60); // Start 60s cooldown
             toast.success('Verification Code Sent', {
                 description: 'Check your email for the 6-digit code.',
             });
@@ -137,6 +153,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         setSent(false);
         setOtp(['', '', '', '', '', '']);
         setError(null);
+        setTimer(0);
+    };
+
+    // Resend handler
+    const handleResend = (e: React.MouseEvent) => {
+        e.preventDefault(); // Prevent form submission if inside form
+        handleSendOtp(e as unknown as React.FormEvent);
     };
 
     if (!isOpen) return null;
@@ -196,6 +219,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             <p className="text-center text-[#F7E7CE] text-sm animate-pulse">Verifying...</p>
                         )}
 
+                        {/* Resend Timer */}
+                        <div className="text-center">
+                            {timer > 0 ? (
+                                <p className="text-zinc-500 text-xs">Resend code in {timer}s</p>
+                            ) : (
+                                <button
+                                    onClick={handleResend}
+                                    className="text-xs text-[#F7E7CE] hover:underline"
+                                >
+                                    Resend Code
+                                </button>
+                            )}
+                        </div>
+
                         <button
                             type="button"
                             onClick={resetFlow}
@@ -221,10 +258,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                         <button
                             type="submit"
-                            disabled={loading || !email}
+                            disabled={loading || (timer > 0) || !email}
                             className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Sending...' : 'Get Verification Code'} <ArrowRight size={14} />
+                            {loading ? 'Sending...' : (timer > 0 ? `Wait ${timer}s` : 'Get Verification Code')} <ArrowRight size={14} />
                         </button>
 
                         <div className="relative py-2">
