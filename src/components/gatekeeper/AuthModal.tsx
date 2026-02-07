@@ -29,7 +29,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    // Use /auth/confirm for client-side token handling (prevents email prefetch issues)
+                    emailRedirectTo: `${window.location.origin}/auth/confirm`,
                 }
             });
 
