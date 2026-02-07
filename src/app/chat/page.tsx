@@ -1,60 +1,68 @@
 'use client';
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Image as ImageIcon, MoreVertical, Phone, Video, ChevronLeft } from 'lucide-react';
+import { Send, Image as ImageIcon, MoreVertical, Phone, Video, ChevronLeft, Check, CheckCheck } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import EphemeralMessage from '@/components/chat/EphemeralMessage';
+import TypingIndicator from '@/components/chat/TypingIndicator';
+import OnlineStatus from '@/components/ui/OnlineStatus';
 import PrivacyShimmer from '@/components/ui/PrivacyShimmer';
-import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import { getProfile, Profile } from '@/lib/services/profiles';
-
-// MOCK DATA FOR DEMO
-const MOCK_MESSAGES = [
-    { id: '1', content: "I've been waiting for someone like you.", sender: 'them', type: 'text', timestamp: '10:02 AM' },
-    { id: '2', content: "The waiting is the hardest part.", sender: 'me', type: 'text', timestamp: '10:05 AM' },
-    { id: '3', content: "https://images.unsplash.com/photo-1542291026-7eec264c27ff", sender: 'them', type: 'image', timestamp: '10:10 AM' },
-];
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
+import { usePresence } from '@/hooks/usePresence';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 function ChatContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const matchId = searchParams.get('match');
+    const partnerId = searchParams.get('partner'); // Pass partner ID in URL
     const { user } = useAuth();
-    const supabase = getSupabaseClient();
 
-    const [messages, setMessages] = useState<any[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    // Real-time hooks
+    const { messages, loading, sendMessage, markAsRead } = useRealtimeMessages(matchId);
+    const { partnerPresence } = usePresence(partnerId);
+    const { isPartnerTyping, setTyping } = useTypingIndicator(matchId, partnerId);
+
     // Fetch Match Profile
     useEffect(() => {
-        if (matchId) {
-            getProfile(matchId).then(setMatchProfile);
+        if (partnerId) {
+            getProfile(partnerId).then(setMatchProfile);
         }
-        // In real app, fetch real messages here
-        setMessages(MOCK_MESSAGES.map(m => ({
-            ...m,
-            isMe: m.sender === 'me',
-            isViewed: false
-        })));
-    }, [matchId]);
+    }, [partnerId]);
 
-    const sendMessage = () => {
-        if (!inputValue.trim()) return;
-        const newMsg = {
-            id: Date.now().toString(),
-            content: inputValue,
-            sender: 'me',
-            type: 'text',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isMe: true,
-            isViewed: false
-        };
-        setMessages(prev => [...prev, newMsg]);
-        setInputValue('');
+    // Auto-scroll on new messages
+    useEffect(() => {
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    }, [messages]);
+
+    // Mark messages as read when viewing
+    useEffect(() => {
+        if (matchId && messages.length > 0) {
+            markAsRead();
+        }
+    }, [matchId, messages, markAsRead]);
+
+    // Handle input change with typing indicator
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+        setTyping(true);
+    };
+
+    // Send message
+    const handleSendMessage = async () => {
+        if (!inputValue.trim()) return;
+
+        setTyping(false);
+        const success = await sendMessage(inputValue.trim());
+        if (success) {
+            setInputValue('');
+        }
     };
 
     return (
@@ -71,13 +79,21 @@ function ChatContent() {
                         <div className="flex items-center gap-3">
                             <div className="relative">
                                 <img src={matchProfile.avatar_url || ''} className="w-10 h-10 rounded-full object-cover" />
-                                <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black" />
+                                <div className="absolute bottom-0 right-0">
+                                    <OnlineStatus
+                                        status={partnerPresence?.status || 'offline'}
+                                        size="sm"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <h1 className="font-bold text-sm text-white">{matchProfile.name}</h1>
-                                <p className="text-[10px] text-[#DC143C] font-mono tracking-widest uppercase">
-                                    Zero-Trace Active
-                                </p>
+                                <OnlineStatus
+                                    status={partnerPresence?.status || 'offline'}
+                                    lastSeen={partnerPresence?.lastSeen}
+                                    showText
+                                    size="sm"
+                                />
                             </div>
                         </div>
                     ) : (
@@ -92,30 +108,82 @@ function ChatContent() {
             </header>
 
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="flex justify-center py-4">
                     <div className="bg-white/5 px-3 py-1 rounded-full text-[10px] text-white/30 uppercase tracking-widest">
-                        Messages vanish after viewing
+                        Messages are end-to-end encrypted
                     </div>
                 </div>
 
-                {messages.map((msg) => (
-                    <EphemeralMessage
-                        key={msg.id}
-                        id={msg.id}
-                        content={msg.content}
-                        type={msg.type as any}
-                        imageUrl={msg.type === 'image' ? msg.content : undefined}
-                        isMe={msg.isMe}
-                        isViewed={msg.isViewed}
-                        expiresAfterSeconds={10}
-                        onView={(id) => {
-                            setMessages(prev => prev.map(m =>
-                                m.id === id ? { ...m, isViewed: true } : m
-                            ));
-                        }}
-                    />
-                ))}
+                {loading ? (
+                    <div className="flex justify-center py-8">
+                        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                    </div>
+                ) : messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                            <Send size={24} className="text-white/30" />
+                        </div>
+                        <p className="text-white/40 text-sm">No messages yet</p>
+                        <p className="text-white/20 text-xs mt-1">Say hello to start the conversation</p>
+                    </div>
+                ) : (
+                    messages.map((msg) => {
+                        const isMe = msg.sender_id === user?.id;
+                        const isRead = msg.read_at !== null;
+
+                        return (
+                            <motion.div
+                                key={msg.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div
+                                    className={`max-w-[75%] px-4 py-3 rounded-2xl ${isMe
+                                            ? 'bg-[#F7E7CE] text-black rounded-br-sm'
+                                            : 'bg-white/10 text-white rounded-bl-sm'
+                                        }`}
+                                >
+                                    {msg.media_url ? (
+                                        <img
+                                            src={msg.media_url}
+                                            alt="Media"
+                                            className="max-w-full rounded-lg"
+                                        />
+                                    ) : (
+                                        <p className="text-sm">{msg.content}</p>
+                                    )}
+
+                                    {/* Timestamp and Read Receipt */}
+                                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <span className={`text-[10px] ${isMe ? 'text-black/50' : 'text-white/30'}`}>
+                                            {new Date(msg.created_at).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                        </span>
+                                        {isMe && (
+                                            isRead ? (
+                                                <CheckCheck size={12} className="text-black/60" />
+                                            ) : (
+                                                <Check size={12} className="text-black/40" />
+                                            )
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        );
+                    })
+                )}
+
+                {/* Typing Indicator */}
+                <AnimatePresence>
+                    {isPartnerTyping && (
+                        <TypingIndicator name={matchProfile?.name} />
+                    )}
+                </AnimatePresence>
+
                 <div ref={scrollRef} />
             </div>
 
@@ -127,13 +195,14 @@ function ChatContent() {
                     </button>
                     <input
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Type a disappearing message..."
+                        onChange={handleInputChange}
+                        placeholder="Type a message..."
                         className="flex-1 bg-transparent text-white placeholder:text-white/20 text-sm focus:outline-none"
-                        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                        onBlur={() => setTyping(false)}
                     />
                     <button
-                        onClick={sendMessage}
+                        onClick={handleSendMessage}
                         disabled={!inputValue.trim()}
                         className="w-10 h-10 rounded-full bg-[#F7E7CE] flex items-center justify-center text-black disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all"
                     >

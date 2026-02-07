@@ -1,32 +1,30 @@
 'use client';
 import { cn } from "@/lib/utils";
-import { usePresence } from "@/hooks/usePresence";
+import OnlineStatus from "./OnlineStatus";
 
 interface AvatarProps {
     src?: string | null;
     alt?: string;
-    userId?: string; // If provided, checks online status
-    size?: number;
+    size?: 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
-    isOnlineFallback?: boolean; // For manual override
+    showOnlineStatus?: boolean;
+    onlineStatus?: 'online' | 'offline' | 'away';
 }
 
 export function Avatar({
     src,
     alt = "Avatar",
-    userId,
-    size = 10, // w-10 equivalent
+    size = 'md',
     className,
-    isOnlineFallback
+    showOnlineStatus = false,
+    onlineStatus = 'offline',
 }: AvatarProps) {
-    const { isUserOnline } = usePresence();
-    const isOnline = userId ? isUserOnline(userId) : isOnlineFallback;
-
-    // Map size number to tailwind classes roughly
-    const sizeClass = size === 10 ? "w-10 h-10" :
-        size === 14 ? "w-14 h-14" :
-            size === 16 ? "w-16 h-16" :
-                "w-10 h-10";
+    const sizeClasses = {
+        sm: 'w-8 h-8',
+        md: 'w-10 h-10',
+        lg: 'w-14 h-14',
+        xl: 'w-16 h-16',
+    };
 
     return (
         <div className={cn("relative inline-block", className)}>
@@ -35,11 +33,16 @@ export function Avatar({
                 alt={alt}
                 className={cn(
                     "rounded-full object-cover ring-1 ring-white/10",
-                    sizeClass
+                    sizeClasses[size]
                 )}
             />
-            {isOnline && (
-                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#0A0A0A] rounded-full z-10" />
+            {showOnlineStatus && (
+                <div className="absolute bottom-0 right-0">
+                    <OnlineStatus
+                        status={onlineStatus}
+                        size={size === 'sm' ? 'sm' : 'md'}
+                    />
+                </div>
             )}
         </div>
     );
