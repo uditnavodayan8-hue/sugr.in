@@ -8,6 +8,8 @@ export interface Message {
     content: string | null;
     media_url: string | null;
     is_one_time_view: boolean;
+    type: 'text' | 'image' | 'video' | 'audio' | 'agreement' | 'vault_key';
+    metadata: Record<string, any> | null;
     viewed_at: string | null;
     created_at: string;
 }
@@ -33,12 +35,14 @@ export async function getMessages(matchId: string): Promise<Message[]> {
 }
 
 /**
- * Send a text message
+ * Send a message (text, agreement, vault_key, etc.)
  */
 export async function sendMessage(
     matchId: string,
     senderId: string,
     content: string,
+    type: Message['type'] = 'text',
+    metadata: Record<string, any> = {},
     isEphemeral: boolean = false
 ): Promise<Message | null> {
     const { data, error } = await supabase
@@ -47,6 +51,8 @@ export async function sendMessage(
             match_id: matchId,
             sender_id: senderId,
             content,
+            type,
+            metadata,
             is_one_time_view: isEphemeral,
         })
         .select()
@@ -70,7 +76,8 @@ export async function sendMediaMessage(
     matchId: string,
     senderId: string,
     mediaUrl: string,
-    isOneTimeView: boolean = false
+    isOneTimeView: boolean = false,
+    type: 'image' | 'video' | 'audio' = 'image'
 ): Promise<Message | null> {
     const { data, error } = await supabase
         .from('messages')
@@ -78,6 +85,7 @@ export async function sendMediaMessage(
             match_id: matchId,
             sender_id: senderId,
             media_url: mediaUrl,
+            type,
             is_one_time_view: isOneTimeView,
         })
         .select()

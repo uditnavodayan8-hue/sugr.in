@@ -11,6 +11,8 @@ export interface Message {
     content: string | null;
     media_url: string | null;
     is_one_time_view: boolean;
+    type: 'text' | 'image' | 'video' | 'audio' | 'agreement' | 'vault_key';
+    metadata: Record<string, any> | null;
     viewed_at: string | null;
     read_at: string | null;
     created_at: string;
@@ -20,7 +22,7 @@ interface UseRealtimeMessagesReturn {
     messages: Message[];
     loading: boolean;
     error: string | null;
-    sendMessage: (content: string, isEphemeral?: boolean) => Promise<boolean>;
+    sendMessage: (content: string, type?: Message['type'], metadata?: Record<string, any>) => Promise<boolean>;
     sendMediaMessage: (mediaUrl: string, isOneTimeView?: boolean) => Promise<boolean>;
     markAsRead: () => Promise<void>;
 }
@@ -110,16 +112,18 @@ export function useRealtimeMessages(matchId: string | null): UseRealtimeMessages
         };
     }, [matchId, user, supabase]);
 
-    // Send text message
+    // Send text/rich message
     const sendMessage = useCallback(
-        async (content: string, isEphemeral: boolean = false): Promise<boolean> => {
+        async (content: string, type: Message['type'] = 'text', metadata: Record<string, any> = {}): Promise<boolean> => {
             if (!matchId || !user) return false;
 
             const { error: sendError } = await supabase.from('messages').insert({
                 match_id: matchId,
                 sender_id: user.id,
                 content,
-                is_one_time_view: isEphemeral,
+                type,
+                metadata,
+                is_one_time_view: false, // Default for text/rich messages
             });
 
             if (sendError) {

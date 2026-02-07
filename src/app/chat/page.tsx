@@ -1,8 +1,10 @@
 'use client';
 import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Image as ImageIcon, MoreVertical, Phone, Video, ChevronLeft, Check, CheckCheck } from 'lucide-react';
+import { Send, Image as ImageIcon, MoreVertical, Phone, Video, ChevronLeft, Check, CheckCheck, Lock, Shield, Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import AgreementSheet from '@/components/chat/AgreementSheet';
+import TouchToReveal from '@/components/media/TouchToReveal';
 import EphemeralMessage from '@/components/chat/EphemeralMessage';
 import TypingIndicator from '@/components/chat/TypingIndicator';
 import OnlineStatus from '@/components/ui/OnlineStatus';
@@ -17,11 +19,12 @@ function ChatContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const matchId = searchParams.get('match');
-    const partnerId = searchParams.get('partner'); // Pass partner ID in URL
+    const partnerId = searchParams.get('partner');
     const { user } = useAuth();
 
     const [inputValue, setInputValue] = useState('');
     const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
+    const [showAgreementSheet, setShowAgreementSheet] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Real-time hooks
@@ -29,40 +32,38 @@ function ChatContent() {
     const { partnerPresence } = usePresence(partnerId);
     const { isPartnerTyping, setTyping } = useTypingIndicator(matchId, partnerId);
 
-    // Fetch Match Profile
+    // Load Partner Profile
     useEffect(() => {
-        if (partnerId) {
-            getProfile(partnerId).then(setMatchProfile);
-        }
+        if (partnerId) getProfile(partnerId).then(setMatchProfile);
     }, [partnerId]);
 
-    // Auto-scroll on new messages
+    // Auto-scroll
     useEffect(() => {
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     }, [messages]);
 
-    // Mark messages as read when viewing
+    // Mark Read
     useEffect(() => {
-        if (matchId && messages.length > 0) {
-            markAsRead();
-        }
+        if (matchId && messages.length > 0) markAsRead();
     }, [matchId, messages, markAsRead]);
 
-    // Handle input change with typing indicator
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(e.target.value);
-        setTyping(true);
-    };
-
-    // Send message
+    // Handlers
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
-
         setTyping(false);
-        const success = await sendMessage(inputValue.trim());
-        if (success) {
-            setInputValue('');
-        }
+        const success = await sendMessage(inputValue.trim(), 'text');
+        if (success) setInputValue('');
+    };
+
+    const handleSendAgreement = async (terms: any) => {
+        if (!matchId || !user) return;
+
+        // Construct agreement summary
+        const summary = `Proposed: ${terms.financialFrequency} arrangement (${terms.discretionLevel})`;
+
+        // Send as special type
+        await sendMessage(summary, 'agreement', terms);
+        setShowAgreementSheet(false);
     };
 
     return (
@@ -80,20 +81,12 @@ function ChatContent() {
                             <div className="relative">
                                 <img src={matchProfile.avatar_url || ''} className="w-10 h-10 rounded-full object-cover" />
                                 <div className="absolute bottom-0 right-0">
-                                    <OnlineStatus
-                                        status={partnerPresence?.status || 'offline'}
-                                        size="sm"
-                                    />
+                                    <OnlineStatus status={partnerPresence?.status || 'offline'} size="sm" />
                                 </div>
                             </div>
                             <div>
                                 <h1 className="font-bold text-sm text-white">{matchProfile.name}</h1>
-                                <OnlineStatus
-                                    status={partnerPresence?.status || 'offline'}
-                                    lastSeen={partnerPresence?.lastSeen}
-                                    showText
-                                    size="sm"
-                                />
+                                <OnlineStatus status={partnerPresence?.status || 'offline'} lastSeen={partnerPresence?.lastSeen} showText size="sm" />
                             </div>
                         </div>
                     ) : (
@@ -110,22 +103,19 @@ function ChatContent() {
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 <div className="flex justify-center py-4">
-                    <div className="bg-white/5 px-3 py-1 rounded-full text-[10px] text-white/30 uppercase tracking-widest">
-                        Messages are end-to-end encrypted
+                    <div className="bg-white/5 px-3 py-1 rounded-full text-[10px] text-white/30 uppercase tracking-widest flex items-center gap-2">
+                        <Lock size={10} /> End-to-end encrypted
                     </div>
                 </div>
 
                 {loading ? (
                     <div className="flex justify-center py-8">
-                        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                        <Loader2 className="w-6 h-6 animate-spin text-white/20" />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-                            <Send size={24} className="text-white/30" />
-                        </div>
-                        <p className="text-white/40 text-sm">No messages yet</p>
-                        <p className="text-white/20 text-xs mt-1">Say hello to start the conversation</p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center opacity-50">
+                        <Send size={24} className="mb-2" />
+                        <p className="text-sm">Start the conversation</p>
                     </div>
                 ) : (
                     messages.map((msg) => {
@@ -139,36 +129,48 @@ function ChatContent() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                             >
-                                <div
-                                    className={`max-w-[75%] px-4 py-3 rounded-2xl ${isMe
-                                            ? 'bg-[#F7E7CE] text-black rounded-br-sm'
-                                            : 'bg-white/10 text-white rounded-bl-sm'
-                                        }`}
-                                >
-                                    {msg.media_url ? (
-                                        <img
+                                <div className={`max-w-[75%] rounded-2xl p-1 overflow-hidden ${isMe ? 'bg-[#F7E7CE] text-black rounded-br-sm' : 'bg-white/10 text-white rounded-bl-sm'
+                                    }`}>
+                                    {/* Content based on Type */}
+                                    {msg.type === 'image' && msg.media_url ? (
+                                        <TouchToReveal
                                             src={msg.media_url}
-                                            alt="Media"
-                                            className="max-w-full rounded-lg"
+                                            className="w-64 h-64"
+                                            blurAmount={isMe ? 0 : 30} // Sender sees clear
+                                            holdToReveal={!isMe}
                                         />
+                                    ) : msg.type === 'agreement' ? (
+                                        <div className="p-4 bg-black/10 rounded-xl space-y-2">
+                                            <div className="flex items-center gap-2 border-b border-black/10 pb-2 mb-2">
+                                                <Shield size={16} className={isMe ? "text-black/60" : "text-emerald-400"} />
+                                                <span className="text-xs font-bold uppercase tracking-wider">Proposal</span>
+                                            </div>
+                                            <p className="text-sm font-serif italic">"{msg.content}"</p>
+                                            <div className="flex gap-2 text-[10px] opacity-60">
+                                                <span className="bg-black/5 px-2 py-1 rounded">
+                                                    {msg.metadata?.financialAmount || 'TBD'}
+                                                </span>
+                                                <span className="bg-black/5 px-2 py-1 rounded">
+                                                    {msg.metadata?.meetingFrequency}
+                                                </span>
+                                            </div>
+                                            {!isMe && (
+                                                <button className="w-full mt-2 py-2 bg-black/10 rounded-lg text-xs font-bold hover:bg-black/20">
+                                                    View Details
+                                                </button>
+                                            )}
+                                        </div>
                                     ) : (
-                                        <p className="text-sm">{msg.content}</p>
+                                        <p className="px-3 py-2 text-sm whitespace-pre-wrap">{msg.content}</p>
                                     )}
 
-                                    {/* Timestamp and Read Receipt */}
-                                    <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                        <span className={`text-[10px] ${isMe ? 'text-black/50' : 'text-white/30'}`}>
-                                            {new Date(msg.created_at).toLocaleTimeString([], {
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
+                                    {/* Meta */}
+                                    <div className={`flex items-center gap-1 px-3 pb-2 text-[10px] ${isMe ? 'justify-end text-black/50' : 'justify-start text-white/30'}`}>
+                                        <span>
+                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                         {isMe && (
-                                            isRead ? (
-                                                <CheckCheck size={12} className="text-black/60" />
-                                            ) : (
-                                                <Check size={12} className="text-black/40" />
-                                            )
+                                            isRead ? <CheckCheck size={12} /> : <Check size={12} />
                                         )}
                                     </div>
                                 </div>
@@ -177,30 +179,39 @@ function ChatContent() {
                     })
                 )}
 
-                {/* Typing Indicator */}
                 <AnimatePresence>
-                    {isPartnerTyping && (
-                        <TypingIndicator name={matchProfile?.name} />
-                    )}
+                    {isPartnerTyping && <TypingIndicator name={matchProfile?.name} />}
                 </AnimatePresence>
-
                 <div ref={scrollRef} />
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-black/80 backdrop-blur-md border-t border-white/5 pb-8">
-                <div className="flex items-center gap-3 bg-white/5 rounded-full px-2 py-2 border border-white/10 focus-within:border-[#F7E7CE]/50 transition-colors">
-                    <button className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white">
+            <div className="p-4 bg-black/80 backdrop-blur-md border-t border-white/5 pb-8 space-y-4">
+                <div className="flex items-center gap-3">
+                    {/* Deal Mode Button */}
+                    <button
+                        onClick={() => setShowAgreementSheet(true)}
+                        className="p-2 rounded-full bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+                    >
+                        <Shield size={20} />
+                    </button>
+
+                    {/* Media Button */}
+                    <button className="p-2 rounded-full bg-white/5 text-white/50 hover:text-white transition-colors">
                         <ImageIcon size={20} />
                     </button>
-                    <input
-                        value={inputValue}
-                        onChange={handleInputChange}
-                        placeholder="Type a message..."
-                        className="flex-1 bg-transparent text-white placeholder:text-white/20 text-sm focus:outline-none"
-                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                        onBlur={() => setTyping(false)}
-                    />
+
+                    <div className="flex-1 bg-white/5 rounded-full px-4 py-2 border border-white/10 focus-within:border-[#F7E7CE]/50 transition-colors flex items-center">
+                        <input
+                            value={inputValue}
+                            onChange={(e) => { setInputValue(e.target.value); setTyping(true); }}
+                            placeholder="Type a message..."
+                            className="flex-1 bg-transparent text-white placeholder:text-white/20 text-sm focus:outline-none"
+                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                            onBlur={() => setTyping(false)}
+                        />
+                    </div>
+
                     <button
                         onClick={handleSendMessage}
                         disabled={!inputValue.trim()}
@@ -210,6 +221,15 @@ function ChatContent() {
                     </button>
                 </div>
             </div>
+
+            {/* Sheets */}
+            <AgreementSheet
+                isOpen={showAgreementSheet}
+                onClose={() => setShowAgreementSheet(false)}
+                onSubmit={handleSendAgreement}
+                partnerName={matchProfile?.name || 'Partner'}
+                isProvider={user?.id === matchId} // Rough check, fix logic if needed
+            />
         </main>
     );
 }

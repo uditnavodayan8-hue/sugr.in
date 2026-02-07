@@ -1,20 +1,8 @@
-'use client';
-
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
-
-interface Profile {
-    id: string;
-    full_name: string;
-    avatar_url: string;
-    role: 'provider' | 'protege' | null;
-    lifestyle_tier: 'executive' | 'elite' | 'premium' | null;
-    sugr_index: number;
-    last_seen: string;
-    is_verified: boolean;
-    bio?: string;
-}
+import { useAuth } from './AuthContext';
+import { Profile } from '@/lib/services/profiles';
+import { User } from '@supabase/supabase-js';
 
 interface AccessRequest {
     id: string;
@@ -39,8 +27,8 @@ const SugrContext = createContext<SugrContextType | null>(null);
 const PRESENCE_INTERVAL = 60000; // 60 seconds
 
 export function SugrProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [profile, setProfile] = useState<Profile | null>(null);
+    // Consume AuthContext for user/profile state
+    const { user, profile, refreshProfile } = useAuth();
     const [notifications, setNotifications] = useState<AccessRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -55,115 +43,58 @@ export function SugrProvider({ children }: { children: ReactNode }) {
             .eq('id', user.id);
     }, [user, supabase]);
 
-    // Refresh profile data
-    const refreshProfile = useCallback(async () => {
-        if (!user) return;
-        const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-        if (data) setProfile(data);
-    }, [user, supabase]);
-
     // Clear notifications
     const clearNotifications = useCallback(() => {
         setNotifications([]);
     }, []);
 
+    // Effect for Real-time Notifications & Presence
     useEffect(() => {
-        const initApp = async () => {
-            setLoading(true);
-
-            // Get current user
-            const { data: { user: currentUser } } = await supabase.auth.getUser();
-            setUser(currentUser);
-
-            if (!currentUser) {
-                setLoading(false);
-                return;
-            }
-
-            // Fetch profile
-            const { data: profileData } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', currentUser.id)
-                .single();
-
-            setProfile(profileData);
+        if (!user) {
+            setNotifications([]);
             setLoading(false);
+            return;
+        }
 
-            // Real-time listener for incoming access requests
-            const channel = supabase.channel(`user-${currentUser.id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'access_requests',
-                        filter: `target_id=eq.${currentUser.id}`
-                    },
-                    (payload: { new: Record<string, unknown> }) => {
-                        setNotifications(prev => [payload.new as unknown as AccessRequest, ...prev]);
-                    }
-                )
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'access_requests',
-                        filter: `requester_id=eq.${currentUser.id}`
-                    },
-                    (payload: { new: Record<string, unknown> }) => {
-                        // Notify when your request is granted/denied
-                        const request = payload.new as unknown as AccessRequest;
-                        if (request.status !== 'pending') {
-                            setNotifications(prev => [request, ...prev]);
-                        }
-                    }
-                )
-                .subscribe();
-
-            return () => {
-                supabase.removeChannel(channel);
-            };
-        };
-
-        initApp();
-
-        // Auth state listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event: string, session: Session | null) => {
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    const { data } = await supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
-                    setProfile(data);
-                } else {
-                    setProfile(null);
-                }
-            }
-        );
-
-        return () => subscription.unsubscribe();
-    }, [supabase]);
-
-    // Presence ping interval
-    useEffect(() => {
-        if (!user) return;
-
-        // Initial ping
+        setLoading(true);
         pingPresence();
 
-        // Set up interval
+        // Real-time listener for incoming access requests
+        const channel = supabase.channel(`user-notifications-${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'access_requests',
+                    filter: `target_id=eq.${user.id}`
+                },
+                (payload: { new: Record<string, unknown> }) => {
+                    setNotifications(prev => [payload.new as unknown as AccessRequest, ...prev]);
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'access_requests',
+                    filter: `requester_id=eq.${user.id}`
+                },
+                (payload: { new: Record<string, unknown> }) => {
+                    // Notify when your request is granted/denied
+                    const request = payload.new as unknown as AccessRequest;
+                    if (request.status !== 'pending') {
+                        setNotifications(prev => [request, ...prev]);
+                    }
+                }
+            )
+            .subscribe();
+
+        // Presence Interval
         const interval = setInterval(pingPresence, PRESENCE_INTERVAL);
 
-        // Ping on visibility change (when user returns to tab)
+        // Visibility Handler
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 pingPresence();
@@ -171,11 +102,14 @@ export function SugrProvider({ children }: { children: ReactNode }) {
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
+        setLoading(false);
+
         return () => {
+            supabase.removeChannel(channel);
             clearInterval(interval);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [user, pingPresence]);
+    }, [user, supabase, pingPresence]);
 
     return (
         <SugrContext.Provider value={{
@@ -199,3 +133,4 @@ export function useSugr() {
     }
     return context;
 }
+

@@ -85,7 +85,8 @@ export function useChat(matchId: string, partnerName?: string, partnerAvatar?: s
         if (!user || !matchId || !text.trim()) return false;
 
         try {
-            const result = await sendMessage(matchId, user.id, text.trim(), isEphemeral);
+            // Updated signature: matchId, senderId, content, type, metadata, isEphemeral
+            const result = await sendMessage(matchId, user.id, text.trim(), 'text', {}, isEphemeral);
             return !!result;
         } catch (err) {
             console.error('Error sending message:', err);
