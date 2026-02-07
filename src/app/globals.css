@@ -57,6 +57,17 @@
   --border: #333333;
   --input: #1A1A1A;
   --ring: #F7E7CE;
+
+  /* === SUGR DESIGN TOKENS === */
+  --sugr-champagne: #F7E7CE;
+  --sugr-crimson: #DC143C;
+  --sugr-noir-deep: #050505;
+  --sugr-noir-surface: #0A0A0A;
+  --sugr-noir-elevated: #121212;
+  --sugr-noir-border: #1A1A1A;
+  --sugr-text-primary: #FFFFFF;
+  --sugr-text-secondary: rgba(255, 255, 255, 0.6);
+  --sugr-text-muted: rgba(255, 255, 255, 0.4);
 }
 
 body {
@@ -102,4 +113,53 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #F7E7CE;
+}
+
+/* === SUGR UTILITY CLASSES === */
+@utility text-crimson {
+  @apply text-[#DC143C];
+}
+
+@utility bg-crimson {
+  @apply bg-[#DC143C];
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* === ANIMATIONS === */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@utility animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(220, 20, 60, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(220, 20, 60, 0.6);
+  }
+}
+
+@utility animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }

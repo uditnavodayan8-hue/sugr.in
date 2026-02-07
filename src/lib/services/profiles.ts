@@ -12,6 +12,14 @@ export interface Profile {
     bio: string;
     avatar_url: string | null;
     video_url: string | null;
+    // Dossier Fields
+    role: 'Provider' | 'Protégé';
+    sugr_index: number; // 0-100
+    lifestyle_tier: 'Minimalist' | 'Moderate' | 'High' | 'Ultra-High' | null;
+    location_lat?: number;
+    location_lng?: number;
+    is_verified_provider: boolean;
+
     verification_level: {
         phone: boolean;
         id: boolean;

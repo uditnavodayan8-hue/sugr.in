@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Settings, MapPin, LogOut, Loader2, Shield, Edit3, ChevronRight, Plus, Image as ImageIcon } from 'lucide-react';
+import { Settings, MapPin, LogOut, Loader2, Shield, Edit3, ChevronRight, Plus, Image as ImageIcon, Bell } from 'lucide-react';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/hooks/useProfile';
@@ -14,6 +15,7 @@ export default function ProfilePage() {
     const { signOut, user } = useAuth();
     const [posts, setPosts] = useState<Post[]>([]);
     const [uploading, setUploading] = useState(false);
+    const { permission, isSupported, subscribeToPush, loading: pushLoading } = usePushNotifications();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Load user's posts
@@ -153,6 +155,31 @@ export default function ProfilePage() {
                         ))}
                     </div>
                 </motion.div>
+
+                {/* Notification Toggle */}
+                {isSupported && permission === 'default' && (
+                    <motion.button
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        onClick={subscribeToPush}
+                        disabled={pushLoading}
+                        className="w-full flex items-center justify-between p-4 bg-[#F7E7CE]/5 border border-[#F7E7CE]/10 rounded-2xl hover:bg-[#F7E7CE]/10 transition-colors mb-4"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#F7E7CE]/10 flex items-center justify-center text-[#F7E7CE]">
+                                <Bell size={18} />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="text-[15px] font-medium text-white">Enable Notifications</h3>
+                                <p className="text-[13px] text-white/40">Get notified when you match</p>
+                            </div>
+                        </div>
+                        <span className="text-[13px] font-medium text-[#F7E7CE]">
+                            {pushLoading ? 'Enabling...' : 'Enable'}
+                        </span>
+                    </motion.button>
+                )}
 
                 {/* Settings Links */}
                 <motion.div

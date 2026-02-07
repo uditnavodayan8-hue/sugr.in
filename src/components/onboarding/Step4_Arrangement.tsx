@@ -20,23 +20,22 @@ const TAGS = [
     { label: "Discreet", icon: <Ghost size={14} /> },
 ];
 
-const ALLOWANCE_RANGES = [
-    { value: "₹25K - ₹50K", label: "Starter" },
-    { value: "₹50K - ₹1L", label: "Comfort" },
-    { value: "₹1L - ₹2L", label: "Premium" },
-    { value: "₹2L - ₹5L", label: "Luxury" },
-    { value: "₹5L+", label: "HNI" },
+const LIFESTYLE_TIERS = [
+    { value: "Minimalist", label: "Under ₹50K", desc: "Mutually beneficial, low pressure." },
+    { value: "Moderate", label: "₹50K - ₹1L", desc: "Comfortable, steady support." },
+    { value: "High", label: "₹1L - ₹3L", desc: "Premium lifestyle, travel & gifts." },
+    { value: "Ultra-High", label: "₹3L+", desc: "Luxury, full sponsorship." },
 ];
 
 export default function Step4_Arrangement({ onNext }: StepProps) {
     const { data, saveStepData, saving } = useOnboarding();
     const [selectedTags, setSelectedTags] = useState<string[]>(data.tags || []);
-    const [allowance, setAllowance] = useState(data.allowance || ALLOWANCE_RANGES[1].value);
+    const [lifestyle_tier, setLifestyleTier] = useState(data.lifestyle_tier || LIFESTYLE_TIERS[1].value);
 
     useEffect(() => {
         setSelectedTags(data.tags || []);
-        setAllowance(data.allowance || ALLOWANCE_RANGES[1].value);
-    }, [data.tags, data.allowance]);
+        setLifestyleTier(data.lifestyle_tier || LIFESTYLE_TIERS[1].value);
+    }, [data.tags, data.lifestyle_tier]);
 
     const toggleTag = (tag: string) => {
         setSelectedTags(prev =>
@@ -49,7 +48,7 @@ export default function Step4_Arrangement({ onNext }: StepProps) {
     const handleNext = async () => {
         const success = await saveStepData({
             tags: selectedTags,
-            allowance,
+            lifestyle_tier,
         });
         if (success) {
             onNext();
@@ -64,27 +63,34 @@ export default function Step4_Arrangement({ onNext }: StepProps) {
             </header>
 
             <div className="space-y-10 py-4">
-                {/* Allowance Selection */}
+                {/* Lifestyle Tier Selection */}
                 <div className="p-6 bg-zinc-900/60 border border-zinc-800 rounded-2xl space-y-4">
                     <div className="flex items-center gap-2 text-[#F7E7CE]">
                         <IndianRupee size={18} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Allowance Expectation</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Lifestyle Expectation</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                        {ALLOWANCE_RANGES.map((range) => (
+                    <div className="grid grid-cols-1 gap-3">
+                        {LIFESTYLE_TIERS.map((tier) => (
                             <button
-                                key={range.value}
-                                onClick={() => setAllowance(range.value)}
+                                key={tier.value}
+                                onClick={() => setLifestyleTier(tier.value)}
                                 className={cn(
-                                    "py-3 px-4 rounded-xl text-sm font-medium transition-all border",
-                                    allowance === range.value
+                                    "flex items-center justify-between p-4 rounded-xl text-sm font-medium transition-all border group",
+                                    lifestyle_tier === tier.value
                                         ? "bg-[#F7E7CE] text-black border-[#F7E7CE]"
-                                        : "bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-600"
+                                        : "bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900"
                                 )}
                             >
-                                <div className="text-xs font-bold">{range.value}</div>
-                                <div className="text-[9px] opacity-60">{range.label}</div>
+                                <div className="text-left">
+                                    <div className="text-xs font-bold uppercase tracking-wider mb-0.5">{tier.value}</div>
+                                    <div className={cn("text-[10px]", lifestyle_tier === tier.value ? "opacity-80" : "opacity-40")}>
+                                        {tier.label}
+                                    </div>
+                                </div>
+                                <div className={cn("text-[10px] text-right max-w-[120px]", lifestyle_tier === tier.value ? "opacity-100" : "opacity-40")}>
+                                    {tier.desc}
+                                </div>
                             </button>
                         ))}
                     </div>

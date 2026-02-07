@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Lock, Heart, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 interface FeedPost {
     id: string;
@@ -18,7 +19,14 @@ interface ProfileFeedProps {
     onRequestAccess?: () => void;
 }
 
-export default function ProfileFeed({ posts, isUnlocked, onRequestAccess }: ProfileFeedProps) {
+interface ProfileFeedProps {
+    posts: FeedPost[];
+    isUnlocked: boolean;
+    isLoading?: boolean;
+    onRequestAccess?: () => void;
+}
+
+export default function ProfileFeed({ posts, isUnlocked, isLoading, onRequestAccess }: ProfileFeedProps) {
     const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
 
     // Sample placeholder data if no posts
@@ -35,55 +43,64 @@ export default function ProfileFeed({ posts, isUnlocked, onRequestAccess }: Prof
         <div className="relative">
             {/* Grid */}
             <div className="grid grid-cols-3 gap-1">
-                {displayPosts.map((post, i) => (
-                    <motion.div
-                        key={post.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.05 }}
-                        onClick={() => isUnlocked && setSelectedPost(post)}
-                        className={cn(
-                            "aspect-square relative overflow-hidden",
-                            isUnlocked && "cursor-pointer hover:opacity-90 active:scale-95 transition-all"
-                        )}
-                    >
-                        {post.type === 'photo' && post.mediaUrl ? (
-                            <img
-                                src={post.mediaUrl}
-                                alt=""
-                                className={cn(
-                                    "w-full h-full object-cover",
-                                    !isUnlocked && "blur-xl scale-110"
-                                )}
-                            />
-                        ) : (
-                            <div className={cn(
-                                "w-full h-full flex flex-col items-center justify-center",
-                                post.type === 'vibe'
-                                    ? "bg-gradient-to-br from-purple-500/20 to-pink-500/20"
-                                    : "bg-gradient-to-br from-[#F7E7CE]/20 to-orange-500/20",
-                                !isUnlocked && "blur-lg"
-                            )}>
-                                <span className="text-3xl mb-2">{post.emoji}</span>
-                                <span className={cn(
-                                    "text-[11px] text-white/60 px-2 text-center",
-                                    !isUnlocked && "opacity-0"
+                {isLoading ? (
+                    // Skeleton Loading State
+                    [...Array(9)].map((_, i) => (
+                        <div key={i} className="aspect-square relative overflow-hidden">
+                            <Skeleton className="w-full h-full bg-white/5" />
+                        </div>
+                    ))
+                ) : (
+                    displayPosts.map((post, i) => (
+                        <motion.div
+                            key={post.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.05 }}
+                            onClick={() => isUnlocked && setSelectedPost(post)}
+                            className={cn(
+                                "aspect-square relative overflow-hidden",
+                                isUnlocked && "cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+                            )}
+                        >
+                            {post.type === 'photo' && post.mediaUrl ? (
+                                <img
+                                    src={post.mediaUrl}
+                                    alt=""
+                                    className={cn(
+                                        "w-full h-full object-cover",
+                                        !isUnlocked && "blur-xl scale-110"
+                                    )}
+                                />
+                            ) : (
+                                <div className={cn(
+                                    "w-full h-full flex flex-col items-center justify-center",
+                                    post.type === 'vibe'
+                                        ? "bg-gradient-to-br from-purple-500/20 to-pink-500/20"
+                                        : "bg-gradient-to-br from-[#F7E7CE]/20 to-orange-500/20",
+                                    !isUnlocked && "blur-lg"
                                 )}>
-                                    {post.content}
-                                </span>
-                            </div>
-                        )}
+                                    <span className="text-3xl mb-2">{post.emoji}</span>
+                                    <span className={cn(
+                                        "text-[11px] text-white/60 px-2 text-center",
+                                        !isUnlocked && "opacity-0"
+                                    )}>
+                                        {post.content}
+                                    </span>
+                                </div>
+                            )}
 
-                        {/* Type Badge */}
-                        {isUnlocked && (
-                            <div className="absolute top-2 left-2">
-                                {post.type === 'vibe' && <Sparkles size={14} className="text-purple-400" />}
-                                {post.type === 'interest' && <Heart size={14} className="text-pink-400" />}
-                                {post.type === 'photo' && <ImageIcon size={14} className="text-white/60" />}
-                            </div>
-                        )}
-                    </motion.div>
-                ))}
+                            {/* Type Badge */}
+                            {isUnlocked && (
+                                <div className="absolute top-2 left-2">
+                                    {post.type === 'vibe' && <Sparkles size={14} className="text-purple-400" />}
+                                    {post.type === 'interest' && <Heart size={14} className="text-pink-400" />}
+                                    {post.type === 'photo' && <ImageIcon size={14} className="text-white/60" />}
+                                </div>
+                            )}
+                        </motion.div>
+                    ))
+                )}
             </div>
 
             {/* Blur Overlay for Locked */}
