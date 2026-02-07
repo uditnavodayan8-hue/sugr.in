@@ -1,9 +1,12 @@
 'use client';
 import { useState } from 'react';
-import { X, ArrowRight, AlertCircle, Mail, CheckCircle } from 'lucide-react';
+import { X, ArrowRight, AlertCircle, Mail, CheckCircle, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
+// @ts-ignore
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -11,7 +14,10 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+    const [mode, setMode] = useState<'options' | 'email' | 'phone' | 'otp'>('options');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [sent, setSent] = useState(false);
@@ -33,7 +39,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             });
 
             if (error) throw error;
-            // Redirect happens automatically
         } catch (err: any) {
             console.error('Google Auth Error:', err);
             const msg = err.message || 'Google sign-in failed. Please try again.';
@@ -63,6 +68,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             if (error) throw error;
             setSent(true);
+            setMode('email');
             toast.success('Magic Link Sent!', {
                 description: 'Check your email and click the link to sign in.',
             });
@@ -76,9 +82,65 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         }
     };
 
+    // Phone Sign-In: Send OTP
+    const handleSendPhoneOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error } = await supabase.auth.signInWithOtp({
+                phone: phone,
+            });
+
+            if (error) throw error;
+            setMode('otp');
+            toast.success('Code Sent!', {
+                description: 'Check your phone for the verification code.',
+            });
+        } catch (err: any) {
+            console.error('Phone Auth Error:', err);
+            const msg = err.message || 'Failed to send code. Please try again.';
+            setError(msg);
+            toast.error('Failed to send code', { description: msg });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Phone Sign-In: Verify OTP
+    const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+
+        try {
+            const { error } = await supabase.auth.verifyOtp({
+                phone: phone,
+                token: otp,
+                type: 'sms',
+            });
+
+            if (error) throw error;
+            toast.success('Signed In!', {
+                description: 'Welcome back.',
+            });
+            onClose(); // Close modal on success (middleware handles redirect)
+        } catch (err: any) {
+            console.error('Verify Error:', err);
+            const msg = err.message || 'Invalid code. Please try again.';
+            setError(msg);
+            toast.error('Invalid Code', { description: msg });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const resetFlow = () => {
         setSent(false);
         setError(null);
+        setMode('options');
+        setOtp('');
     };
 
     if (!isOpen) return null;
@@ -94,7 +156,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <X size={20} />
                 </button>
 
-                <h2 className="text-xl font-serif text-[#F7E7CE] mb-6 tracking-wide">Enter the Gate</h2>
+                <h2 className="text-xl font-serif text-[#F7E7CE] mb-6 tracking-wide text-center">Enter the Gate</h2>
 
                 {/* Error Message */}
                 {error && (
@@ -104,43 +166,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </div>
                 )}
 
-                {sent ? (
-                    <div className="space-y-6 text-center">
-                        {/* Success Icon */}
-                        <div className="w-20 h-20 bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
-                            <CheckCircle size={40} className="text-green-500" />
-                        </div>
-
-                        <div>
-                            <h3 className="text-white text-lg font-bold mb-2">Check Your Email</h3>
-                            <p className="text-zinc-400 text-sm">
-                                We sent a login link to<br />
-                                <span className="text-white font-medium">{email}</span>
-                            </p>
-                        </div>
-
-                        <div className="bg-zinc-800/50 p-4 rounded-xl">
-                            <p className="text-zinc-300 text-xs">
-                                📧 Click the <strong>magic link</strong> in the email to sign in.
-                            </p>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={resetFlow}
-                            className="w-full text-[10px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest mt-4"
-                        >
-                            Use different email
-                        </button>
-                    </div>
-                ) : (
+                {/* MODE: INITIAL OPTIONS */}
+                {mode === 'options' && (
                     <div className="space-y-4">
-                        {/* Google Sign-In Button */}
+                        {/* Google Sign-In */}
                         <button
                             type="button"
                             onClick={handleGoogleSignIn}
                             disabled={googleLoading}
-                            className="w-full py-3 bg-white text-black rounded-xl font-bold text-sm hover:bg-zinc-100 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-3 bg-white text-black rounded-xl font-bold text-sm hover:bg-zinc-100 transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
                         >
                             {googleLoading ? (
                                 <span className="animate-pulse">Connecting...</span>
@@ -157,7 +191,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             )}
                         </button>
 
-                        {/* Divider */}
                         <div className="relative py-2">
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-zinc-800"></div>
@@ -167,37 +200,126 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             </div>
                         </div>
 
-                        {/* Email Form */}
-                        <form onSubmit={handleSendMagicLink} className="space-y-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Email</label>
-                                <input
-                                    type="email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="you@example.com"
-                                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-[#F7E7CE] outline-none"
-                                    required
-                                />
-                            </div>
+                        {/* Phone Button */}
+                        <button
+                            onClick={() => setMode('phone')}
+                            className="w-full py-3 bg-zinc-800 text-white rounded-xl font-bold text-sm hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Phone size={18} /> Continue with Phone
+                        </button>
 
-                            <button
-                                type="submit"
-                                disabled={loading || !email}
-                                className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? (
-                                    <span className="animate-pulse">Sending...</span>
-                                ) : (
-                                    <>Send Magic Link <Mail size={14} /></>
-                                )}
-                            </button>
-                        </form>
-
-                        <p className="text-center text-zinc-500 text-[10px] mt-4">
-                            No password needed. Sign in instantly with Google or email.
-                        </p>
+                        {/* Email Button */}
+                        <button
+                            onClick={() => setMode('email')}
+                            className="w-full py-3 bg-zinc-800 text-white rounded-xl font-bold text-sm hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Mail size={18} /> Continue with Email
+                        </button>
                     </div>
+                )}
+
+                {/* MODE: EMAIL INPUT */}
+                {mode === 'email' && !sent && (
+                    <form onSubmit={handleSendMagicLink} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="you@example.com"
+                                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white focus:border-[#F7E7CE] outline-none"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading || !email}
+                            className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {loading ? <span className="animate-pulse">Sending...</span> : 'Send Magic Link'}
+                        </button>
+                        <button type="button" onClick={resetFlow} className="w-full text-zinc-500 text-xs hover:text-white">Back</button>
+                    </form>
+                )}
+
+                {/* MODE: EMAIL SENT SUCCESS */}
+                {mode === 'email' && sent && (
+                    <div className="space-y-6 text-center">
+                        <div className="w-16 h-16 bg-green-900/20 rounded-full flex items-center justify-center mx-auto">
+                            <CheckCircle size={32} className="text-green-500" />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold">Check Your Email</h3>
+                            <p className="text-zinc-400 text-sm mt-2">Link sent to <span className="text-white">{email}</span></p>
+                        </div>
+                        <button type="button" onClick={resetFlow} className="text-zinc-500 text-xs hover:text-white">Use a different email</button>
+                    </div>
+                )}
+
+                {/* MODE: PHONE INPUT */}
+                {mode === 'phone' && (
+                    <form onSubmit={handleSendPhoneOtp} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Phone Number</label>
+                            <PhoneInput
+                                international
+                                defaultCountry="US"
+                                value={phone}
+                                onChange={(val) => setPhone(val || '')}
+                                className="phone-input-container"
+                            />
+                        </div>
+                        <style jsx global>{`
+                            .phone-input-container .PhoneInputInput {
+                                background: black;
+                                color: white;
+                                border: none;
+                                padding: 12px;
+                                border-radius: 8px;
+                                outline: none;
+                            }
+                            .phone-input-container .PhoneInputCountry {
+                                margin-right: 8px;
+                            }
+                        `}</style>
+                        <button
+                            type="submit"
+                            disabled={loading || !phone}
+                            className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {loading ? <span className="animate-pulse">Sending...</span> : 'Send Code'}
+                        </button>
+                        <button type="button" onClick={resetFlow} className="w-full text-zinc-500 text-xs hover:text-white">Back</button>
+                    </form>
+                )}
+
+                {/* MODE: OTP VERIFICATION */}
+                {mode === 'otp' && (
+                    <form onSubmit={handleVerifyPhoneOtp} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Verification Code</label>
+                            <input
+                                type="text"
+                                value={otp}
+                                onChange={(e) => setOtp(e.target.value)}
+                                placeholder="123456"
+                                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-[0.5em] focus:border-[#F7E7CE] outline-none"
+                                maxLength={6}
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading || otp.length < 6}
+                            className="w-full py-3 bg-[#F7E7CE] text-black rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            {loading ? <span className="animate-pulse">Verifying...</span> : 'Verify Code'}
+                        </button>
+                        <button type="button" onClick={() => setMode('phone')} className="w-full text-zinc-500 text-xs hover:text-white">Change Number</button>
+                    </form>
                 )}
             </motion.div>
         </div>
