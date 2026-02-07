@@ -17,6 +17,7 @@ export interface OnboardingData {
     // Step 4: Arrangement
     tags: string[];
     allowance: string;
+    lifestyle_tier: string;
     // Step 5: Vetting
     avatarUrl: string;
     idDocUrl: string;
@@ -33,6 +34,7 @@ const initialData: OnboardingData = {
     bio: '',
     tags: [],
     allowance: '',
+    lifestyle_tier: '',
     avatarUrl: '',
     idDocUrl: '',
     faceImageUrl: '',
@@ -70,6 +72,7 @@ export function useOnboarding() {
                     bio: profile.bio || '',
                     tags: [], // Not in profiles table yet
                     allowance: '', // Not in profiles table yet
+                    lifestyle_tier: profile.lifestyle_tier || '',
                     avatarUrl: profile.avatar_url || '',
                     idDocUrl: '',
                     faceImageUrl: '',
@@ -107,6 +110,7 @@ export function useOnboarding() {
             if (stepData.city !== undefined) profileUpdate.city = stepData.city;
             if (stepData.bio !== undefined) profileUpdate.bio = stepData.bio;
             if (stepData.avatarUrl !== undefined) profileUpdate.avatar_url = stepData.avatarUrl;
+            if (stepData.lifestyle_tier !== undefined) profileUpdate.lifestyle_tier = stepData.lifestyle_tier;
 
             // Upsert profile (create if not exists, update if exists)
             const { error } = await supabase
@@ -166,6 +170,7 @@ export function useOnboarding() {
                     age: data.age,
                     city: data.city,
                     bio: data.bio,
+                    lifestyle_tier: data.lifestyle_tier,
                     avatar_url: data.avatarUrl,
                 })
                 .eq('id', user.id);

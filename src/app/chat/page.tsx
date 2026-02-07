@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Image as ImageIcon, MoreVertical, Phone, Video, ChevronLeft } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,7 +16,7 @@ const MOCK_MESSAGES = [
     { id: '3', content: "https://images.unsplash.com/photo-1542291026-7eec264c27ff", sender: 'them', type: 'image', timestamp: '10:10 AM' },
 ];
 
-export default function ChatPage() {
+function ChatContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const matchId = searchParams.get('match');
@@ -142,5 +142,13 @@ export default function ChatPage() {
                 </div>
             </div>
         </main>
+    );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={<div className="fixed inset-0 bg-[#0A0A0A] flex items-center justify-center"><div className="w-32 h-32 bg-white/5 animate-pulse rounded-full" /></div>}>
+            <ChatContent />
+        </Suspense>
     );
 }
