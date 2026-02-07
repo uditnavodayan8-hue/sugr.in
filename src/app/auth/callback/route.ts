@@ -5,8 +5,6 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get('code')
-    // if "next" is in param, use it as the redirect URL
-    const next = searchParams.get('next') ?? '/onboarding'
 
     if (code) {
         const cookieStore = await cookies()
@@ -24,20 +22,39 @@ export async function GET(request: Request) {
                                 cookieStore.set(name, value, options)
                             )
                         } catch {
-                            // The `setAll` method was called from a Server Component.
-                            // This can be ignored if you have middleware refreshing
-                            // user sessions.
+                            // Ignore - called from Server Component
                         }
                     },
                 },
             }
         )
+
         const { error } = await supabase.auth.exchangeCodeForSession(code)
+
         if (!error) {
-            return NextResponse.redirect(`${origin}${next}`)
+            // Check if user has completed onboarding
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (user) {
+                // Check if profile exists with required fields
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('name, avatar_url')
+                    .eq('id', user.id)
+                    .single()
+
+                // If profile has name AND avatar, they've completed onboarding -> go to dashboard
+                if (profile?.name && profile?.avatar_url) {
+                    return NextResponse.redirect(`${origin}/dashboard`)
+                }
+            }
+
+            // New user or incomplete profile -> go to onboarding
+            return NextResponse.redirect(`${origin}/onboarding`)
         }
     }
 
-    // return the user to an error page with instructions
+    // Error case
     return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 }
+
