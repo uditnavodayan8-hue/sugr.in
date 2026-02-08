@@ -89,22 +89,40 @@ export default function OnboardingForm() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            // Mark verification as initiated (not verified, just started)
-            // In a real app, this would trigger a verification flow
-            const { error } = await supabase
+            console.log('Initiating verification for user:', user.id);
+
+            // TEST CONNECTION
+            const { error: selectError } = await supabase.from('profiles').select('id').eq('id', user.id).single();
+            if (selectError) {
+                console.error('Connection/Select check failed:', selectError);
+                // We don't throw, just log, in case select is blocked but update allows?
+                // Actually if select fails, update likely fails too.
+            } else {
+                console.log('Connection check passed.');
+            }
+
+            // Use update instead of upsert to avoid potential insert issues
+            // This assumes the profile was created in the previous step
+            const { error, status, statusText } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: user.id,
-                    is_verified: true, // For demo, auto-verify
+                .update({
+                    is_verified: true,
+                    // Also set legacy field if needed, or just relying on trigger
+                    // is_verified_provider: role === 'provider' 
+                })
+                .eq('id', user.id);
 
-                });
+            if (error) {
+                console.error('Verification update error:', error);
+                throw error;
+            }
 
-            if (error) throw error;
-
+            console.log('Verification successful, Status:', status, statusText);
             toast.success('Verification complete!');
             router.push('/dashboard');
         } catch (err: any) {
-            toast.error('Verification failed', { description: err.message });
+            console.error('Verification failed detailed:', err);
+            toast.error('Verification failed', { description: err.message || 'Unknown error' });
         } finally {
             setLoading(false);
         }
@@ -297,12 +315,11 @@ export default function OnboardingForm() {
                                 </div>
 
                                 {/* Initiate */}
-                                <motion.button
+                                <button
+                                    type="button"
                                     onClick={handleVerificationInitiate}
                                     disabled={loading}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="w-full py-4 bg-emerald-500 text-black font-black text-sm uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                                    className="w-full py-4 bg-emerald-500 text-black font-black text-sm uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
                                 >
                                     {loading ? (
                                         <span className="animate-pulse">Verifying...</span>
@@ -311,7 +328,7 @@ export default function OnboardingForm() {
                                             <Check size={16} /> Start Verification
                                         </>
                                     )}
-                                </motion.button>
+                                </button>
 
                                 <button
                                     onClick={() => router.push('/dashboard')}

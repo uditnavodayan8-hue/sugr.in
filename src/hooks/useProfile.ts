@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { getSupabaseClient } from '@/lib/supabase/client';
 import { getProfile, updateProfile, Profile } from '@/lib/services/profiles';
 
 export function useProfile() {
+    const supabase = getSupabaseClient();
     const { user, loading: authLoading } = useAuth();
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
@@ -30,6 +32,28 @@ export function useProfile() {
         };
 
         loadProfile();
+
+        // Realtime subscription
+        const channel = supabase
+            .channel(`profile:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'profiles',
+                    filter: `id=eq.${user.id}`,
+                },
+                (payload) => {
+                    console.log('Realtime profile update:', payload);
+                    setProfile(payload.new as Profile);
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [user, authLoading]);
 
     const update = async (updates: Partial<Profile>): Promise<boolean> => {

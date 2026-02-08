@@ -9,6 +9,7 @@ import EphemeralMessage from '@/components/chat/EphemeralMessage';
 import TypingIndicator from '@/components/chat/TypingIndicator';
 import OnlineStatus from '@/components/ui/OnlineStatus';
 import PrivacyShimmer from '@/components/ui/PrivacyShimmer';
+import MatchesList from '@/components/chat/MatchesList';
 import { useAuth } from '@/context/AuthContext';
 import { getProfile, Profile } from '@/lib/services/profiles';
 import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
@@ -20,6 +21,12 @@ function ChatContent() {
     const searchParams = useSearchParams();
     const matchId = searchParams.get('match');
     const partnerId = searchParams.get('partner');
+
+    // If no match selected, show matches list
+    if (!matchId) {
+        return <MatchesList />;
+    }
+
     const { user, profile } = useAuth();
 
     const [inputValue, setInputValue] = useState('');

@@ -51,9 +51,17 @@ export default function SwipeFeed({ initialProfiles, currentUserId }: SwipeFeedP
                 // Haptic feedback
                 if (navigator.vibrate) navigator.vibrate(50);
 
-                const { success, error } = await sendAccessRequest(currentUserId, currentProfile.id);
+                const { success, match, error } = await sendAccessRequest(currentUserId, currentProfile.id);
                 if (success) {
-                    toast.success(`Access requested for ${currentProfile.name}`);
+                    if (match) {
+                        toast.success(`It's a Match!`, {
+                            description: `You and ${currentProfile.name} can now connect.`,
+                            duration: 5000,
+                            icon: '🎉'
+                        });
+                    } else {
+                        toast.success(`Access requested for ${currentProfile.name}`);
+                    }
                 } else {
                     console.error('Swipe request failed:', error);
                     // usage of toast error might be annoying if it happens often, but good for debug

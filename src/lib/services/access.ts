@@ -18,7 +18,33 @@ export async function sendAccessRequest(
     requesterId: string,
     targetId: string,
     message?: string
-): Promise<{ success: boolean; error?: any }> {
+): Promise<{ success: boolean; match?: boolean; error?: any }> {
+    // 1. Check if the target has already requested access from us (Pending)
+    const { data: incomingRequest } = await supabase
+        .from('access_requests')
+        .select('*')
+        .eq('requester_id', targetId)
+        .eq('target_id', requesterId)
+        .eq('status', 'pending')
+        .single();
+
+    if (incomingRequest) {
+        // IT'S A MATCH!
+        // Update their request to 'accepted'
+        const { error: updateError } = await supabase
+            .from('access_requests')
+            .update({ status: 'accepted' })
+            .eq('id', incomingRequest.id);
+
+        if (updateError) {
+            console.error('Error accepting match:', updateError);
+            return { success: false, error: updateError };
+        }
+
+        return { success: true, match: true };
+    }
+
+    // 2. Otherwise, create a new request
     const { error } = await supabase
         .from('access_requests')
         .insert({
@@ -37,7 +63,7 @@ export async function sendAccessRequest(
         return { success: false, error };
     }
 
-    return { success: true };
+    return { success: true, match: false };
 }
 
 /**
