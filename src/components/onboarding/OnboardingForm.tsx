@@ -64,12 +64,13 @@ export default function OnboardingForm() {
 
             const { error } = await supabase
                 .from('profiles')
-                .update({
+                .upsert({
+                    id: user.id,
                     role,
                     lifestyle_tier: tier,
                     bio,
-                })
-                .eq('id', user.id);
+
+                });
 
             if (error) throw error;
 
@@ -92,8 +93,11 @@ export default function OnboardingForm() {
             // In a real app, this would trigger a verification flow
             const { error } = await supabase
                 .from('profiles')
-                .update({ is_verified: true }) // For demo, auto-verify
-                .eq('id', user.id);
+                .upsert({
+                    id: user.id,
+                    is_verified: true, // For demo, auto-verify
+
+                });
 
             if (error) throw error;
 

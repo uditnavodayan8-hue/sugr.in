@@ -72,7 +72,8 @@ export async function middleware(request: NextRequest) {
         // Allow access to /profile for verification initiation
         if (!profile?.is_verified && pathname.startsWith('/dashboard')) {
             const url = request.nextUrl.clone();
-            url.pathname = '/onboarding?step=verify';
+            url.pathname = '/onboarding';
+            url.searchParams.set('step', 'verify');
             return NextResponse.redirect(url);
         }
     }

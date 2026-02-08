@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import DiscoveryFeed from '@/components/discovery/DiscoveryFeed';
+import SwipeFeed from '@/components/dashboard/SwipeFeed';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export default async function DashboardPage() {
@@ -46,37 +46,31 @@ export default async function DashboardPage() {
         redirect('/onboarding');
     }
 
-    // Fetch active ads (not expired) with user info
-    const { data: ads, error } = await supabase
-        .from('ads')
-        .select(`
-            *,
-            profiles:user_id (
-                full_name,
-                avatar_url,
-                role
-            )
-        `)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(50);
+
+    // Determine target role for discovery
+    const targetRole = profile.role === 'provider' ? 'protege' : 'provider';
+
+    // Fetch profiles for the swipe feed
+    // Exclude current user and filter by opposite role
+    const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*, photos:profile_photos(*)')
+        .neq('id', user.id)
+        .eq('role', targetRole)
+        .not('avatar_url', 'is', null) // Only show valid profiles
+        .order('last_seen', { ascending: false }) // Show active users first
+        .limit(20);
 
     if (error) {
-        console.error("Error fetching ads:", error);
+        console.error("Error fetching profiles:", error);
     }
 
-    // Transform ads to include user info at top level
-    const transformedAds = (ads || []).map(ad => ({
-        ...ad,
-        user_name: ad.profiles?.full_name,
-        user_avatar: ad.profiles?.avatar_url,
-        user_role: ad.profiles?.role,
-    }));
+    const initialProfiles = (profiles || []) as any[]; // Cast to any to avoid strict Profile type matching issues for now, or import Profile
 
     return (
-        <main className="relative">
+        <main className="relative h-screen overflow-hidden bg-black">
             <DashboardHeader />
-            <DiscoveryFeed initialAds={transformedAds} />
+            <SwipeFeed initialProfiles={initialProfiles} currentUserId={user.id} />
         </main>
     );
 }

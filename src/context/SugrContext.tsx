@@ -1,3 +1,5 @@
+'use client';
+
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { useAuth } from './AuthContext';
@@ -50,6 +52,8 @@ export function SugrProvider({ children }: { children: ReactNode }) {
 
     // Effect for Real-time Notifications & Presence
     useEffect(() => {
+        let mounted = true;
+
         if (!user) {
             setNotifications([]);
             setLoading(false);
@@ -57,7 +61,7 @@ export function SugrProvider({ children }: { children: ReactNode }) {
         }
 
         setLoading(true);
-        pingPresence();
+        if (mounted) pingPresence();
 
         // Real-time listener for incoming access requests
         const channel = supabase.channel(`user-notifications-${user.id}`)
@@ -70,7 +74,9 @@ export function SugrProvider({ children }: { children: ReactNode }) {
                     filter: `target_id=eq.${user.id}`
                 },
                 (payload: { new: Record<string, unknown> }) => {
-                    setNotifications(prev => [payload.new as unknown as AccessRequest, ...prev]);
+                    if (mounted) {
+                        setNotifications(prev => [payload.new as unknown as AccessRequest, ...prev]);
+                    }
                 }
             )
             .on(
@@ -82,6 +88,7 @@ export function SugrProvider({ children }: { children: ReactNode }) {
                     filter: `requester_id=eq.${user.id}`
                 },
                 (payload: { new: Record<string, unknown> }) => {
+                    if (!mounted) return;
                     // Notify when your request is granted/denied
                     const request = payload.new as unknown as AccessRequest;
                     if (request.status !== 'pending') {
@@ -92,19 +99,22 @@ export function SugrProvider({ children }: { children: ReactNode }) {
             .subscribe();
 
         // Presence Interval
-        const interval = setInterval(pingPresence, PRESENCE_INTERVAL);
+        const interval = setInterval(() => {
+            if (mounted) pingPresence();
+        }, PRESENCE_INTERVAL);
 
         // Visibility Handler
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && mounted) {
                 pingPresence();
             }
         };
         document.addEventListener('visibilitychange', handleVisibilityChange);
 
-        setLoading(false);
+        if (mounted) setLoading(false);
 
         return () => {
+            mounted = false;
             supabase.removeChannel(channel);
             clearInterval(interval);
             document.removeEventListener('visibilitychange', handleVisibilityChange);

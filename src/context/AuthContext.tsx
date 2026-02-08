@@ -24,36 +24,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getSupabaseClient();
 
     useEffect(() => {
-        // Get initial session
+        let mounted = true;
+
         const initSession = async () => {
-            const { data: { session: initialSession } } = await supabase.auth.getSession();
-            setSession(initialSession);
-            setUser(initialSession?.user ?? null);
-            if (initialSession?.user) {
-                const profileData = await getProfile(initialSession.user.id);
-                setProfile(profileData);
+            try {
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+
+                if (!mounted) return;
+
+                if (initialSession) {
+                    setSession(initialSession);
+                    setUser(initialSession.user);
+
+                    if (initialSession.user) {
+                        const profileData = await getProfile(initialSession.user.id);
+                        if (mounted) setProfile(profileData);
+                    }
+                }
+            } catch (error) {
+                console.error("Auth initialization error:", error);
+            } finally {
+                if (mounted) setLoading(false);
             }
-            setLoading(false);
         };
+
         initSession();
 
-        // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event: string, newSession: Session | null) => {
+            async (_event, newSession) => {
+                if (!mounted) return;
+
                 setSession(newSession);
                 setUser(newSession?.user ?? null);
+
                 if (newSession?.user) {
                     const profileData = await getProfile(newSession.user.id);
-                    setProfile(profileData);
+                    if (mounted) setProfile(profileData);
                 } else {
-                    setProfile(null);
+                    if (mounted) setProfile(null);
                 }
-                setLoading(false);
+
+                if (mounted) setLoading(false);
             }
         );
 
-        return () => subscription.unsubscribe();
-    }, [supabase]);
+        return () => {
+            mounted = false;
+            subscription.unsubscribe();
+        };
+    }, []);
 
     const signOut = async () => {
         await supabase.auth.signOut();

@@ -20,7 +20,7 @@ function ChatContent() {
     const searchParams = useSearchParams();
     const matchId = searchParams.get('match');
     const partnerId = searchParams.get('partner');
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
 
     const [inputValue, setInputValue] = useState('');
     const [matchProfile, setMatchProfile] = useState<Profile | null>(null);
@@ -228,7 +228,7 @@ function ChatContent() {
                 onClose={() => setShowAgreementSheet(false)}
                 onSubmit={handleSendAgreement}
                 partnerName={matchProfile?.name || 'Partner'}
-                isProvider={user?.id === matchId} // Rough check, fix logic if needed
+                isProvider={profile?.role === 'provider'} // Correct check using profile role
             />
         </main>
     );

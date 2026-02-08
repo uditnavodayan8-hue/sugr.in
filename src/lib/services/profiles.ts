@@ -4,7 +4,7 @@ import { ProfilePhoto } from './profilePhotos';
 
 export interface Profile {
     id: string;
-    role: 'Provider' | 'Protégé';
+    role: 'provider' | 'protege';
     name: string;
     age: number;
     gender: string;
@@ -56,6 +56,10 @@ export async function getProfile(userId: string): Promise<Profile | null> {
         .single();
 
     if (error) {
+        if (error.code === 'PGRST116') {
+            // Row not found - this is expected for new users or if profile was deleted
+            return null;
+        }
         console.error('Error fetching profile:', error);
         return null;
     }

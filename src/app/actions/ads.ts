@@ -1,7 +1,6 @@
 'use server';
 
-import { createServerClient } from '@supabase/ssr';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 interface PostAdInput {
@@ -14,9 +13,7 @@ interface PostAdInput {
  * Ads expire after 24 hours automatically.
  */
 export async function postAd(input: PostAdInput) {
-    // Note: For server actions, we need to use a different approach
-    // This is a simplified version - in production, use cookies-based server client
-    const supabase = getSupabaseClient();
+    const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -43,6 +40,8 @@ export async function postAd(input: PostAdInput) {
             user_id: user.id,
             content: input.content,
             tier: input.tier,
+            type: 'Event',
+            location: 'Global',
         })
         .select()
         .single();
@@ -60,7 +59,7 @@ export async function postAd(input: PostAdInput) {
  * Server Action to delete user's own ad.
  */
 export async function deleteAd(adId: string) {
-    const supabase = getSupabaseClient();
+    const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -90,7 +89,7 @@ export async function respondToAccessRequest(
     requestId: string,
     status: 'granted' | 'denied'
 ) {
-    const supabase = getSupabaseClient();
+    const supabase = await createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
 

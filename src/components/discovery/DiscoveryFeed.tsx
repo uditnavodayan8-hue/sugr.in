@@ -44,11 +44,15 @@ export default function DiscoveryFeed({ initialAds }: DiscoveryFeedProps) {
 
     // Real-time subscription for new ads
     useEffect(() => {
+        let mounted = true;
+
         const channel = supabase.channel('live-ads')
             .on(
                 'postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'ads' },
                 async (payload: { new: Record<string, unknown> }) => {
+                    if (!mounted) return;
+
                     // Fetch the user info for the new ad
                     const newAdData = payload.new as unknown as Ad;
                     const { data: userData } = await supabase
@@ -56,6 +60,8 @@ export default function DiscoveryFeed({ initialAds }: DiscoveryFeedProps) {
                         .select('full_name, avatar_url, role')
                         .eq('id', newAdData.user_id)
                         .single();
+
+                    if (!mounted) return;
 
                     const newAd: Ad = {
                         ...newAdData,
@@ -71,6 +77,7 @@ export default function DiscoveryFeed({ initialAds }: DiscoveryFeedProps) {
                 'postgres_changes',
                 { event: 'DELETE', schema: 'public', table: 'ads' },
                 (payload: { old: Record<string, unknown> }) => {
+                    if (!mounted) return;
                     const deletedAd = payload.old as unknown as Ad;
                     setAds(prev => prev.filter(ad => ad.id !== deletedAd.id));
                 }
@@ -78,6 +85,7 @@ export default function DiscoveryFeed({ initialAds }: DiscoveryFeedProps) {
             .subscribe();
 
         return () => {
+            mounted = false;
             supabase.removeChannel(channel);
         };
     }, [supabase]);
