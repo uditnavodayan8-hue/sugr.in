@@ -6,7 +6,8 @@ import { ArrowLeft, Loader2, MapPin, Shield, MoreHorizontal, UserPlus, UserCheck
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getProfile, Profile } from '@/lib/services/profiles';
-import { getMatches, Match, createSwipe } from '@/lib/services/matches';
+import { getMatches, Match } from '@/lib/services/matches';
+import { sendAccessRequest } from '@/lib/services/access';
 import { getProfileFeed, Post } from '@/lib/services/feed';
 import PhotoGallery from '@/components/profile/PhotoGallery';
 import FloatingChatBubble from '@/components/chat/FloatingChatBubble';
@@ -38,10 +39,7 @@ export default function UserProfilePage() {
 
                 // Check if matched
                 const matches = await getMatches(user.id);
-                const match = matches.find(m =>
-                    (m.user_a === userId || m.user_b === userId) &&
-                    m.status === 'active'
-                );
+                const match = matches.find(m => m.partner.id === userId);
 
                 setMatchInfo({
                     isMatched: !!match,
@@ -67,24 +65,21 @@ export default function UserProfilePage() {
         setRequesting(true);
 
         try {
-            const { isMatch } = await createSwipe(user.id, userId, 'like');
+            const { success, match, error } = await sendAccessRequest(user.id, userId);
 
-            if (isMatch) {
+            if (success && match) {
                 toast.success("It's a Match!", {
                     description: `You matched with ${profile?.name}`,
                 });
                 // Reload match info
                 const matches = await getMatches(user.id);
-                const match = matches.find(m =>
-                    (m.user_a === userId || m.user_b === userId) &&
-                    m.status === 'active'
-                );
+                const match = matches.find(m => m.partner.id === userId);
                 setMatchInfo({
                     isMatched: true,
                     matchId: match?.id || null,
                     isPending: false
                 });
-            } else {
+            } else if (success) {
                 toast.success('Request Sent', {
                     description: 'They will be notified of your interest',
                 });

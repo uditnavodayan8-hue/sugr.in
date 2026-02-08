@@ -41,6 +41,23 @@ export async function sendAccessRequest(
             return { success: false, error: updateError };
         }
 
+        // Create the Match Record
+        const { error: matchError } = await supabase
+            .from('matches')
+            .insert({
+                user_a: requesterId,
+                user_b: targetId,
+                status: 'active'
+            });
+
+        if (matchError) {
+            console.error('Error creating match record:', matchError);
+            // Verify if it already exists (race condition)
+            if (matchError.code !== '23505') {
+                return { success: false, error: matchError };
+            }
+        }
+
         return { success: true, match: true };
     }
 

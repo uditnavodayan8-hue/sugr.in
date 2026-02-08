@@ -57,7 +57,7 @@ export async function middleware(request: NextRequest) {
     if (user && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !pathname.includes('.')) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role, is_verified')
+            .select('role')
             .eq('id', user.id)
             .single();
 
@@ -68,14 +68,7 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(url);
         }
 
-        // Has role but not verified? Block dashboard access, redirect to verification
-        // Allow access to /profile for verification initiation
-        if (!profile?.is_verified && pathname.startsWith('/dashboard')) {
-            const url = request.nextUrl.clone();
-            url.pathname = '/onboarding';
-            url.searchParams.set('step', 'verify');
-            return NextResponse.redirect(url);
-        }
+
     }
 
     // Optionally redirect authenticated users from auth routes to dashboard

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Settings, MapPin, LogOut, Loader2, Shield, Edit3, ChevronRight, Plus, Image as ImageIcon, Bell } from 'lucide-react';
+import { Settings, MapPin, LogOut, Loader2, Shield, Edit3, ChevronRight, Plus, Image as ImageIcon, Bell, ArrowLeft } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -80,10 +80,19 @@ export default function ProfilePage() {
     return (
         <main className="fixed inset-0 bg-[#0A0A0A] text-white overflow-y-auto pb-32">
             {/* ... (existing header) */}
-            <header className="px-8 pt-14 pb-6 flex items-center justify-between">
-                <h1 className="text-[34px] font-bold tracking-tight">Profile</h1>
+            {/* Header */}
+            <header className="px-6 pt-12 pb-4 flex items-center justify-between sticky top-0 bg-[#0A0A0A]/80 backdrop-blur-xl z-50">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => router.push('/dashboard')}
+                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+                    >
+                        <ArrowLeft size={20} strokeWidth={1.5} />
+                    </button>
+                    <h1 className="text-[24px] font-bold tracking-tight">Profile</h1>
+                </div>
                 <button
-                    onClick={() => toast.info('Settings coming soon')}
+                    onClick={() => router.push('/settings')}
                     className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
                 >
                     <Settings size={20} strokeWidth={1.5} />
@@ -98,7 +107,7 @@ export default function ProfilePage() {
                     className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-6 relative overflow-hidden"
                 >
                     {/* ... (existing card content) */}
-                    {profile.verification_level?.id && (
+                    {profile?.verification_level?.id && (
                         <div className="absolute top-6 right-6">
                             <div className="w-10 h-10 rounded-full bg-[#F7E7CE]/10 border border-[#F7E7CE]/20 flex items-center justify-center">
                                 <Shield size={18} className="text-[#F7E7CE]" strokeWidth={1.5} />
@@ -110,12 +119,12 @@ export default function ProfilePage() {
                         {/* Avatar */}
                         <div className="relative">
                             <img
-                                src={profile.avatar_url || 'https://via.placeholder.com/80'}
+                                src={profile?.avatar_url || 'https://via.placeholder.com/80'}
                                 className="w-20 h-20 rounded-full object-cover border-2 border-white/10"
-                                alt={profile.name}
+                                alt={profile?.name}
                             />
                             <button
-                                onClick={() => router.push('/onboarding')}
+                                onClick={() => router.push('/onboarding?mode=edit')}
                                 className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#F7E7CE] flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
                             >
                                 <Edit3 size={14} className="text-[#0A0A0A]" strokeWidth={2} />
@@ -125,25 +134,25 @@ export default function ProfilePage() {
                         {/* Info */}
                         <div className="flex-1 pt-1">
                             <h2 className="text-[24px] font-semibold tracking-tight mb-1">
-                                {profile.name || 'Anonymous'}
+                                {profile?.name || 'Anonymous'}
                             </h2>
                             <div className="flex items-center gap-2 text-[15px] text-white/40 mb-3">
                                 <MapPin size={14} strokeWidth={1.5} />
-                                <span>{profile.city || 'Not set'}</span>
+                                <span>{profile?.city || 'Not set'}</span>
                                 <span>·</span>
-                                <span>{profile.age || '—'}</span>
+                                <span>{profile?.age || '—'}</span>
                             </div>
                             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#F7E7CE]/10 border border-[#F7E7CE]/20">
-                                <span className="text-[13px] font-medium text-[#F7E7CE]">{profile.role}</span>
+                                <span className="text-[13px] font-medium text-[#F7E7CE]">{profile?.role}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Bio */}
-                    {profile.bio && (
+                    {profile?.bio && (
                         <div className="mt-6 pt-6 border-t border-white/[0.06]">
                             <p className="text-[15px] text-white/60 leading-relaxed">
-                                {profile.bio}
+                                {profile?.bio}
                             </p>
                         </div>
                     )}
@@ -152,12 +161,12 @@ export default function ProfilePage() {
                     <div className="mt-6 pt-6 border-t border-white/[0.06]">
                         <div className="flex items-center justify-between mb-3">
                             <span className="text-[13px] text-white/40">Trust Score</span>
-                            <span className="text-[17px] font-semibold text-[#F7E7CE]">{profile.trust_score || 0}%</span>
+                            <span className="text-[17px] font-semibold text-[#F7E7CE]">{profile?.trust_score || 0}%</span>
                         </div>
                         <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
-                                animate={{ width: `${profile.trust_score || 0}%` }}
+                                animate={{ width: `${profile?.trust_score || 0}%` }}
                                 transition={{ duration: 1, ease: [0.32, 0.72, 0, 1] }}
                                 className="h-full bg-gradient-to-r from-[#F7E7CE] to-[#F7E7CE]/60 rounded-full"
                             />
@@ -175,10 +184,10 @@ export default function ProfilePage() {
                     <h3 className="text-[17px] font-semibold mb-4">Verification</h3>
                     <div className="space-y-3">
                         {[
-                            { key: 'phone', label: 'Phone Number', verified: profile.verification_level?.phone },
-                            { key: 'id', label: 'Government ID', verified: profile.verification_level?.id },
-                            { key: 'social', label: 'Social Media', verified: profile.verification_level?.social },
-                            { key: 'wealth', label: 'Financial Status', verified: profile.verification_level?.wealth },
+                            { key: 'phone', label: 'Phone Number', verified: profile?.verification_level?.phone },
+                            { key: 'id', label: 'Government ID', verified: profile?.verification_level?.id },
+                            { key: 'social', label: 'Social Media', verified: profile?.verification_level?.social },
+                            { key: 'wealth', label: 'Financial Status', verified: profile?.verification_level?.wealth },
                         ].map((item) => (
                             <button
                                 key={item.key}
@@ -231,7 +240,7 @@ export default function ProfilePage() {
                     className="space-y-2"
                 >
                     {[
-                        { label: 'Edit Profile', onClick: () => router.push('/onboarding') },
+                        { label: 'Edit Profile', onClick: () => router.push('/onboarding?mode=edit') },
                         { label: 'Privacy & Safety', onClick: () => toast.info('Privacy settings coming soon') },
                         { label: 'Notifications', onClick: () => toast.info('Notification settings coming soon') },
                     ].map((item) => (
@@ -332,7 +341,7 @@ export default function ProfilePage() {
                 type={verificationModal.type}
                 currentStatus={
                     verificationModal.type ?
-                        profile.verification_level?.[verificationModal.type] :
+                        profile?.verification_level?.[verificationModal.type] :
                         false
                 }
                 onVerify={handleVerify}

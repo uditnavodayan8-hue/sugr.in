@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import Link from 'next/link';
 import { Lock, BadgeCheck, MapPin, Activity, KeyRound, Send } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -91,11 +93,13 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
             >
-                <img
+                <Image
                     src={currentPhoto.url}
-                    alt=""
+                    alt={profile.name}
+                    fill
+                    priority={true}
                     className={cn(
-                        "w-full h-full object-cover filter brightness-[0.85] contrast-[1.1] transition-all duration-700",
+                        "object-cover filter brightness-[0.85] contrast-[1.1] transition-all duration-700",
                         // VAULT BLUR LOGIC: Blur all except first photo if locked OR always blur if sensitive
                         (isVaultLocked && photoIndex > 0) ? "blur-xl scale-110" : "blur-0"
                     )}
@@ -126,9 +130,11 @@ export default function ProfileCard({ profile, onRemove }: ProfileCardProps) {
             <div className="absolute top-6 left-6 z-20 pointer-events-none">
                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                        <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
-                            {profile.name}
-                        </h1>
+                        <Link href={`/profile/${profile.id}`} className="hover:underline decoration-white/30 decoration-2 underline-offset-4 transition-all">
+                            <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none cursor-pointer">
+                                {profile.name}
+                            </h1>
+                        </Link>
                         {profile.is_verified_provider && (
                             <BadgeCheck className="text-[#DC143C] w-6 h-6" fill="currentColor" stroke="black" />
                         )}

@@ -1,6 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
 
 import { getProfile, Profile } from '@/lib/services/profiles';
@@ -41,7 +41,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         if (mounted) setProfile(profileData);
                     }
                 }
-            } catch (error) {
+            } catch (error: any) {
+                if (error.name === 'AbortError') return;
                 console.error("Auth initialization error:", error);
             } finally {
                 if (mounted) setLoading(false);
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, newSession) => {
+            async (_event: AuthChangeEvent, newSession: Session | null) => {
                 if (!mounted) return;
 
                 setSession(newSession);

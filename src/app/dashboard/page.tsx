@@ -1,8 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import SwipeFeed from '@/components/dashboard/SwipeFeed';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import DashboardContent from '@/components/dashboard/DashboardContent';
+import { Profile } from '@/lib/services/profiles';
 
 export default async function DashboardPage() {
     const cookieStore = await cookies();
@@ -65,12 +65,10 @@ export default async function DashboardPage() {
         console.error("Error fetching profiles:", error);
     }
 
-    const initialProfiles = (profiles || []) as any[]; // Cast to any to avoid strict Profile type matching issues for now, or import Profile
+    // Ensure type safety
+    const initialProfiles = (profiles || []) as unknown as Profile[];
 
     return (
-        <main className="relative h-screen overflow-hidden bg-black">
-            <DashboardHeader />
-            <SwipeFeed initialProfiles={initialProfiles} currentUserId={user.id} />
-        </main>
+        <DashboardContent initialProfiles={initialProfiles} currentUserId={user.id} />
     );
 }

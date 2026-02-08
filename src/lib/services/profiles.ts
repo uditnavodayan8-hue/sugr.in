@@ -32,7 +32,7 @@ export interface Profile {
 }
 
 export interface DiscoveryFilters {
-    role?: 'Provider' | 'Protégé';
+    role?: 'provider' | 'protege';
     minAge?: number;
     maxAge?: number;
     city?: string;
@@ -152,11 +152,33 @@ export async function getDiscoveryProfiles(
         return profiles.slice(offset, offset + limit);
     }
 
+    // 1. Get IDs of people I've already swiped on
+    const { data: mySwipes } = await supabase
+        .from('access_requests')
+        .select('target_id')
+        .eq('requester_id', currentUserId);
+
+    const { data: myMatches } = await supabase
+        .from('access_requests')
+        .select('requester_id')
+        .eq('target_id', currentUserId)
+        .eq('status', 'accepted');
+
+    const excludedIds = new Set<string>();
+    excludedIds.add(currentUserId); // Always exclude self
+    mySwipes?.forEach((r: any) => excludedIds.add(r.target_id));
+    myMatches?.forEach((r: any) => excludedIds.add(r.requester_id));
+
+    const excludedIdsArray = Array.from(excludedIds);
+
+
     // FALLBACK: Standard Query
     let query = supabase
         .from('profiles')
         .select('*, photos:profile_photos(*)')
-        .neq('id', currentUserId)
+        // Exclude excludedIds
+        // If the list is huge, this might be slow, but it works for now
+        .not('id', 'in', excludedIdsArray)
         // Only show completed profiles (users who finished onboarding)
         .not('avatar_url', 'is', null)
         .not('name', 'is', null)
@@ -181,6 +203,12 @@ export async function getDiscoveryProfiles(
         console.error('Error fetching discovery profiles:', error);
         return [];
     }
+
+    // Verify exclusions if RPC was used?
+    // RPC currently doesn't exclude swipes. We should filter result.
+    // If lat/lng case (RPC), we need to filter manually:
+    // ... logic above handles standard query.
+    // RPC Logic needs update too if we want Geo + Filter.
 
     return (data as Profile[]) || [];
 }

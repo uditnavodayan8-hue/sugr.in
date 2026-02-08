@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, User, X } from 'lucide-react';
+import { Bell, User, X, MessageCircle } from 'lucide-react';
 import { useSugr } from '@/context/SugrContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,12 @@ export default function DashboardHeader() {
                             ) : (
                                 <User size={20} className="text-white" />
                             )}
+                        </Link>
+
+                        {/* Chat / Messages */}
+                        <Link href="/chat" className="p-2 rounded-full bg-white/10 relative">
+                            <MessageCircle size={20} className="text-white" />
+                            {/* We could add unread count here later */}
                         </Link>
                     </div>
                 </div>

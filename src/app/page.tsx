@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import SugrGate from '@/components/gatekeeper/SugrGate';
+import DevLogin from '@/components/auth/DevLogin';
 
 export default function Home() {
   return (
@@ -48,6 +49,9 @@ export default function Home() {
           Members Only · Est 2026
         </motion.div>
       </div>
+
+      {/* Developer Tools */}
+      <DevLogin />
     </main>
   );
 }

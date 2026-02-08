@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { getProfile, updateProfile, Profile } from '@/lib/services/profiles';
 
@@ -23,7 +24,8 @@ export function useProfile() {
                 setLoading(true);
                 const data = await getProfile(user.id);
                 setProfile(data);
-            } catch (err) {
+            } catch (err: any) {
+                if (err.name === 'AbortError') return;
                 console.error('Error loading profile:', err);
                 setError('Failed to load profile');
             } finally {
@@ -44,7 +46,7 @@ export function useProfile() {
                     table: 'profiles',
                     filter: `id=eq.${user.id}`,
                 },
-                (payload) => {
+                (payload: RealtimePostgresChangesPayload<Profile>) => {
                     console.log('Realtime profile update:', payload);
                     setProfile(payload.new as Profile);
                 }

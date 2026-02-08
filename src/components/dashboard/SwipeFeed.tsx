@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 import { Profile } from '@/lib/services/profiles';
 import ProfileCard from './ProfileCard';
+import MatchOverlay from './MatchOverlay';
 import { sendAccessRequest } from '@/lib/services/access';
 import { toast } from 'sonner';
 import { X, KeyRound, RotateCw } from 'lucide-react';
+import { useProfile } from '@/hooks/useProfile';
 
 interface SwipeFeedProps {
     initialProfiles: Profile[];
@@ -14,8 +16,11 @@ interface SwipeFeedProps {
 }
 
 export default function SwipeFeed({ initialProfiles, currentUserId }: SwipeFeedProps) {
-    const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
+    const [profiles, setProfiles] = useState<Profile[]>(initialProfiles || []);
     const [history, setHistory] = useState<Profile[]>([]); // For undo functionality (optional)
+
+    const { profile: currentUserProfile } = useProfile();
+    const [matchedProfile, setMatchedProfile] = useState<Profile | null>(null);
 
     // Motion values for the top card
     const x = useMotionValue(0);
@@ -54,17 +59,14 @@ export default function SwipeFeed({ initialProfiles, currentUserId }: SwipeFeedP
                 const { success, match, error } = await sendAccessRequest(currentUserId, currentProfile.id);
                 if (success) {
                     if (match) {
-                        toast.success(`It's a Match!`, {
-                            description: `You and ${currentProfile.name} can now connect.`,
-                            duration: 5000,
-                            icon: '🎉'
-                        });
+                        // TRIGGER MATCH OVERLAY
+                        setMatchedProfile(currentProfile);
+                        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]); // Celebration vibe
                     } else {
                         toast.success(`Access requested for ${currentProfile.name}`);
                     }
                 } else {
                     console.error('Swipe request failed:', error);
-                    // usage of toast error might be annoying if it happens often, but good for debug
                 }
             } catch (err) {
                 console.error('Swipe error:', err);
@@ -94,6 +96,16 @@ export default function SwipeFeed({ initialProfiles, currentUserId }: SwipeFeedP
 
     return (
         <div className="fixed inset-0 bg-black overflow-hidden flex flex-col">
+            {/* MATCH OVERLAY */}
+            {currentUserProfile && matchedProfile && (
+                <MatchOverlay
+                    isOpen={!!matchedProfile}
+                    onClose={() => setMatchedProfile(null)}
+                    currentProfile={currentUserProfile}
+                    matchedProfile={matchedProfile}
+                />
+            )}
+
             <div className="relative w-full h-full flex items-center justify-center">
                 <AnimatePresence>
                     {profiles.map((profile, index) => {

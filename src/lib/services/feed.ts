@@ -26,6 +26,31 @@ export async function getProfileFeed(userId: string): Promise<Post[]> {
     return data || [];
 }
 
+export async function getDiscoveryFeed(currentUserId: string): Promise<any[]> {
+    const { data, error } = await supabase
+        .from('posts')
+        .select(`
+            *,
+            profiles:user_id (
+                id,
+                name,
+                avatar_url,
+                role,
+                is_verified_provider
+            )
+        `)
+        .neq('user_id', currentUserId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    if (error) {
+        console.error('Error fetching discovery feed:', error);
+        return [];
+    }
+
+    return data || [];
+}
+
 export async function createPost(post: Omit<Post, 'id' | 'created_at'>) {
     const { data, error } = await supabase
         .from('posts')
