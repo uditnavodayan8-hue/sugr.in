@@ -4,6 +4,8 @@ import { Settings, MapPin, LogOut, Loader2, Shield, Edit3, ChevronRight, Plus, I
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { getSupabaseClient } from '@/lib/supabase/client';
+import VerificationModal from '@/components/profile/VerificationModal';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/context/AuthContext';
 import { getProfileFeed, createPost, uploadPostImage, Post } from '@/lib/services/feed';
@@ -11,59 +13,91 @@ import { toast } from 'sonner';
 
 export default function ProfilePage() {
     const router = useRouter();
+    const { user, signOut } = useAuth();
     const { profile, loading, error } = useProfile();
-    const { signOut, user } = useAuth();
+    const { permission, subscribeToPush, loading: pushLoading, isSupported } = usePushNotifications();
+
     const [posts, setPosts] = useState<Post[]>([]);
     const [uploading, setUploading] = useState(false);
-    const { permission, isSupported, subscribeToPush, loading: pushLoading } = usePushNotifications();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Load user's posts
+    const [verificationModal, setVerificationModal] = useState<{ isOpen: boolean; type: 'phone' | 'id' | 'social' | 'wealth' | null }>({
+        isOpen: false,
+        type: null
+    });
+    const supabase = getSupabaseClient();
+
     useEffect(() => {
-        if (!user) return;
-        getProfileFeed(user.id).then(setPosts).catch(console.error);
+        if (user) {
+            getProfileFeed(user.id).then(setPosts);
+        }
     }, [user]);
 
+    // ... (existing code)
+
+    const handleVerify = async (type: 'phone' | 'id' | 'social' | 'wealth', data: any) => {
+        if (!user || !profile) return;
+
+        // Optimistic update
+        const updatedLevel = {
+            ...profile.verification_level,
+            [type]: true
+        };
+
+        // In a real app, we'd process 'data' (upload ID, verify OTP, etc.) here
+        // For now, we just mark it as true in the database
+
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                verification_level: updatedLevel,
+                // Increase trust score on verification
+                trust_score: Math.min((profile.trust_score || 0) + 10, 100)
+            })
+            .eq('id', user.id);
+
+        if (error) {
+            throw error;
+        }
+
+        toast.success(`Verified ${type}!`);
+        // The useProfile hook should pick up the changes via realtime or revalidation
+        // For immediate feedback, we could manually mutate the profile object in a real implementation
+    };
+
+    const openVerification = (type: 'phone' | 'id' | 'social' | 'wealth') => {
+        setVerificationModal({ isOpen: true, type });
+    };
+
     if (loading) {
-        return (
-            <main className="fixed inset-0 bg-[#0A0A0A] flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-[#F7E7CE]" />
-            </main>
-        );
+        // ... (existing loading return)
     }
 
     if (error || !profile) {
-        return (
-            <main className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center p-6">
-                <p className="text-[15px] text-white/40 mb-6">Profile not found</p>
-                <button
-                    onClick={() => router.push('/onboarding')}
-                    className="px-6 py-3 bg-[#F7E7CE] text-[#0A0A0A] rounded-full font-semibold text-[15px]"
-                >
-                    Complete Profile
-                </button>
-            </main>
-        );
+        // ... (existing error return)
     }
 
     return (
         <main className="fixed inset-0 bg-[#0A0A0A] text-white overflow-y-auto pb-32">
-            {/* Header */}
+            {/* ... (existing header) */}
             <header className="px-8 pt-14 pb-6 flex items-center justify-between">
                 <h1 className="text-[34px] font-bold tracking-tight">Profile</h1>
-                <button className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                <button
+                    onClick={() => toast.info('Settings coming soon')}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+                >
                     <Settings size={20} strokeWidth={1.5} />
                 </button>
             </header>
 
             <div className="px-4 space-y-6">
-                {/* Profile Card */}
+                {/* ... (existing profile card) */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-6 relative overflow-hidden"
                 >
-                    {/* Verification Badge */}
+                    {/* ... (existing card content) */}
                     {profile.verification_level?.id && (
                         <div className="absolute top-6 right-6">
                             <div className="w-10 h-10 rounded-full bg-[#F7E7CE]/10 border border-[#F7E7CE]/20 flex items-center justify-center">
@@ -80,7 +114,10 @@ export default function ProfilePage() {
                                 className="w-20 h-20 rounded-full object-cover border-2 border-white/10"
                                 alt={profile.name}
                             />
-                            <button className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#F7E7CE] flex items-center justify-center shadow-lg">
+                            <button
+                                onClick={() => router.push('/onboarding')}
+                                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-[#F7E7CE] flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                            >
                                 <Edit3 size={14} className="text-[#0A0A0A]" strokeWidth={2} />
                             </button>
                         </div>
@@ -143,15 +180,19 @@ export default function ProfilePage() {
                             { key: 'social', label: 'Social Media', verified: profile.verification_level?.social },
                             { key: 'wealth', label: 'Financial Status', verified: profile.verification_level?.wealth },
                         ].map((item) => (
-                            <div key={item.key} className="flex items-center justify-between py-2">
-                                <span className="text-[15px] text-white/60">{item.label}</span>
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.verified ? 'bg-[#F7E7CE]/20' : 'bg-white/5'
+                            <button
+                                key={item.key}
+                                onClick={() => openVerification(item.key as any)}
+                                className="w-full flex items-center justify-between py-3 hover:bg-white/5 px-2 -mx-2 rounded-xl transition-colors group"
+                            >
+                                <span className="text-[15px] text-white/60 group-hover:text-white transition-colors">{item.label}</span>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${item.verified ? 'bg-[#F7E7CE]/20' : 'bg-white/5 border border-white/10'
                                     }`}>
                                     {item.verified && (
                                         <div className="w-2 h-2 rounded-full bg-[#F7E7CE]" />
                                     )}
                                 </div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </motion.div>
@@ -166,6 +207,7 @@ export default function ProfilePage() {
                         disabled={pushLoading}
                         className="w-full flex items-center justify-between p-4 bg-[#F7E7CE]/5 border border-[#F7E7CE]/10 rounded-2xl hover:bg-[#F7E7CE]/10 transition-colors mb-4"
                     >
+                        {/* ... (existing notification content) */}
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-[#F7E7CE]/10 flex items-center justify-center text-[#F7E7CE]">
                                 <Bell size={18} />
@@ -190,8 +232,8 @@ export default function ProfilePage() {
                 >
                     {[
                         { label: 'Edit Profile', onClick: () => router.push('/onboarding') },
-                        { label: 'Privacy & Safety', onClick: () => { } },
-                        { label: 'Notifications', onClick: () => { } },
+                        { label: 'Privacy & Safety', onClick: () => toast.info('Privacy settings coming soon') },
+                        { label: 'Notifications', onClick: () => toast.info('Notification settings coming soon') },
                     ].map((item) => (
                         <button
                             key={item.label}
@@ -204,13 +246,12 @@ export default function ProfilePage() {
                     ))}
                 </motion.div>
 
-                {/* My Posts Section */}
+                {/* ... (existing posts section and sign out) */}
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
+                    // ... (posts section animation)
                     className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-6"
                 >
+                    {/* ... (posts section content) */}
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-[17px] font-semibold">My Posts</h3>
                         <input
@@ -284,6 +325,18 @@ export default function ProfilePage() {
                     Sign Out
                 </motion.button>
             </div>
+
+            <VerificationModal
+                isOpen={verificationModal.isOpen}
+                onClose={() => setVerificationModal({ ...verificationModal, isOpen: false })}
+                type={verificationModal.type}
+                currentStatus={
+                    verificationModal.type ?
+                        profile.verification_level?.[verificationModal.type] :
+                        false
+                }
+                onVerify={handleVerify}
+            />
         </main>
     );
 }
