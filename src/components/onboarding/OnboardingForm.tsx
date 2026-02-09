@@ -46,6 +46,7 @@ export default function OnboardingForm() {
 
     const [step, setStep] = useState(initialStep);
     const [role, setRole] = useState<Role | null>(null);
+    const [username, setUsername] = useState('');
     const [tier, setTier] = useState<LifestyleTier>('executive');
     const [bio, setBio] = useState('');
     const [loading, setLoading] = useState(false);
@@ -64,13 +65,14 @@ export default function OnboardingForm() {
 
                 const { data, error } = await supabase
                     .from('profiles')
-                    .select('role, lifestyle_tier, bio')
+                    .select('role, username, lifestyle_tier, bio')
                     .eq('id', user.id)
                     .single();
 
                 if (error) throw error;
                 if (data) {
                     if (data.role) setRole(data.role as Role);
+                    if (data.username) setUsername(data.username);
                     if (data.lifestyle_tier) setTier(data.lifestyle_tier as LifestyleTier);
                     if (data.bio) setBio(data.bio);
                 }
@@ -91,7 +93,10 @@ export default function OnboardingForm() {
     };
 
     const handleProfileSubmit = async () => {
-        if (!role) return;
+        if (!role || !username.trim()) {
+            toast.error('Please complete all fields');
+            return;
+        }
 
         setLoading(true);
         try {
@@ -102,6 +107,7 @@ export default function OnboardingForm() {
                 .from('profiles')
                 .update({
                     role,
+                    username,
                     lifestyle_tier: tier,
                     bio,
                 })
@@ -176,6 +182,19 @@ export default function OnboardingForm() {
                                 </div>
 
                                 <div className="space-y-6">
+                                    {/* Username */}
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
+                                            Username
+                                        </label>
+                                        <input
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            placeholder="Choose a unique handle"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/30 focus:border-white/30 outline-none transition-all"
+                                        />
+                                    </div>
+
                                     {/* Lifestyle Tier */}
                                     <div className="space-y-3">
                                         <label className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
