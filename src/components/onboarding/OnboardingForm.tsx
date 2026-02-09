@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Shield, Star, ArrowRight, Check, Upload, Camera } from 'lucide-react';
+import Step1_Role from './Step1_Role';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -155,62 +156,9 @@ export default function OnboardingForm() {
                     </div>
                 ) : (
                     <AnimatePresence mode="wait">
-                        {/* Step 1: Role Selection */}
+                        {/* Step 1: Role Selection (Liquid UI) */}
                         {step === 1 && (
-                            <motion.div
-                                key="role"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                className="w-full max-w-lg space-y-8"
-                            >
-                                <div className="text-center space-y-2">
-                                    <h1 className="text-3xl font-serif italic">{isEditMode ? 'Change Your Role' : 'Choose Your Path'}</h1>
-                                    <p className="text-white/40 text-sm">This defines your experience on Sugr</p>
-                                </div>
-
-                                {/* ... Role options ... */}
-                                <div className="space-y-4">
-                                    {ROLES.map((r) => (
-                                        <motion.button
-                                            key={r.id}
-                                            onClick={() => handleRoleSelect(r.id)}
-                                            whileHover={{ scale: 1.02 }}
-                                            whileTap={{ scale: 0.98 }}
-                                            className={cn(
-                                                "w-full p-6 rounded-2xl text-left transition-all border",
-                                                role === r.id
-                                                    ? "border-white/30 bg-white/5"
-                                                    : "border-white/10 bg-white/[0.02] hover:bg-white/5"
-                                            )}
-                                        >
-                                            <div className="flex items-start gap-4">
-                                                <div className={cn(
-                                                    "w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br",
-                                                    r.gradient
-                                                )}>
-                                                    <r.icon size={24} className="text-white" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h3 className="text-lg font-bold">{r.title}</h3>
-                                                    <p className="text-sm text-white/50">{r.subtitle}</p>
-                                                    <p className="text-xs text-white/30 mt-2">{r.description}</p>
-                                                </div>
-                                                <ArrowRight size={20} className="text-white/30" />
-                                            </div>
-                                        </motion.button>
-                                    ))}
-                                </div>
-
-                                {isEditMode && (
-                                    <button
-                                        onClick={() => router.back()}
-                                        className="w-full text-center text-white/40 text-xs hover:text-white/60 mt-4"
-                                    >
-                                        Cancel
-                                    </button>
-                                )}
-                            </motion.div>
+                            <Step1_Role onSelect={(r) => handleRoleSelect(r)} />
                         )}
 
                         {/* Step 2: Profile Details */}

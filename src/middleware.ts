@@ -53,22 +53,20 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(url);
     }
 
-    // "Ghost" Identity Check: Ensure user has a role
+    // "Ghost" Identity Check: Ensure user has a role AND username
     if (user && !pathname.startsWith('/onboarding') && !pathname.startsWith('/auth') && !pathname.startsWith('/api') && !pathname.includes('.')) {
         const { data: profile } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, username') // Check both
             .eq('id', user.id)
             .single();
 
-        // No role? Force to onboarding
-        if (!profile?.role) {
+        // No role OR no username? Force to onboarding
+        if (!profile?.role || !profile?.username) {
             const url = request.nextUrl.clone();
             url.pathname = '/onboarding';
             return NextResponse.redirect(url);
         }
-
-
     }
 
     // Optionally redirect authenticated users from auth routes to dashboard
