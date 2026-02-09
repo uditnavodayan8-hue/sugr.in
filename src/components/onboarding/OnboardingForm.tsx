@@ -100,12 +100,12 @@ export default function OnboardingForm() {
 
             const { error } = await supabase
                 .from('profiles')
-                .upsert({
-                    id: user.id,
+                .update({
                     role,
                     lifestyle_tier: tier,
                     bio,
-                });
+                })
+                .eq('id', user.id);
 
             if (error) throw error;
 
