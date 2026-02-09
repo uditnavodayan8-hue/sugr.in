@@ -4,7 +4,9 @@ import { useState } from 'react';
 import DashboardHeader from './DashboardHeader';
 import SwipeFeed from './SwipeFeed';
 import BroadcastFeed from './BroadcastFeed';
+import DailyPicks from './DailyPicks';
 import { Profile } from '@/lib/services/profiles';
+import { DailyPick } from '@/lib/services/curation';
 import { Activity, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -12,19 +14,24 @@ import { motion } from 'framer-motion';
 interface DashboardContentProps {
     initialProfiles: Profile[];
     currentUserId: string;
+    streak?: number;
+    dailyPicks?: DailyPick[];
 }
 
-export default function DashboardContent({ initialProfiles, currentUserId }: DashboardContentProps) {
+export default function DashboardContent({ initialProfiles, currentUserId, streak = 0, dailyPicks = [] }: DashboardContentProps) {
     const [activeTab, setActiveTab] = useState<'discover' | 'broadcasts'>('discover');
 
     return (
         <main className="relative h-screen overflow-hidden bg-black text-white">
-            <DashboardHeader />
+            <DashboardHeader streak={streak} />
 
             {/* TAB CONTENT */}
             <div className="absolute inset-0 top-16 pb-20 overflow-y-auto scrollbar-hide">
                 {activeTab === 'discover' ? (
-                    <SwipeFeed initialProfiles={initialProfiles} currentUserId={currentUserId} />
+                    <>
+                        <DailyPicks picks={dailyPicks} />
+                        <SwipeFeed initialProfiles={initialProfiles} currentUserId={currentUserId} />
+                    </>
                 ) : (
                     <BroadcastFeed currentUserId={currentUserId} />
                 )}

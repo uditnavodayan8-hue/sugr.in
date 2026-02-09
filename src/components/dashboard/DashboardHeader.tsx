@@ -8,7 +8,14 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
-export default function DashboardHeader() {
+
+import { Flame } from 'lucide-react';
+
+interface DashboardHeaderProps {
+    streak?: number;
+}
+
+export default function DashboardHeader({ streak = 0 }: DashboardHeaderProps) {
     const { profile, notifications, unreadCount, clearNotifications } = useSugr();
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -24,6 +31,13 @@ export default function DashboardHeader() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
+                        {/* Streak Badge */}
+                        {streak > 0 && (
+                            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#DC143C]/20 border border-[#DC143C]/40">
+                                <Flame size={14} className="text-[#DC143C] fill-[#DC143C]" />
+                                <span className="text-[10px] font-bold text-[#DC143C]">{streak}</span>
+                            </div>
+                        )}
                         {/* Notifications */}
                         <button
                             onClick={() => setShowNotifications(true)}

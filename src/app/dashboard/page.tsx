@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { Profile } from '@/lib/services/profiles';
+import { getDailyPicks } from '@/lib/services/curation';
+import { checkDailyStreak } from '@/lib/services/retention';
 
 export default async function DashboardPage() {
     const cookieStore = await cookies();
@@ -68,7 +70,16 @@ export default async function DashboardPage() {
     // Ensure type safety
     const initialProfiles = (profiles || []) as unknown as Profile[];
 
+    // Fetch Engagement Data
+    const dailyPicks = await getDailyPicks(user.id);
+    const streakData = await checkDailyStreak(user.id);
+
     return (
-        <DashboardContent initialProfiles={initialProfiles} currentUserId={user.id} />
+        <DashboardContent
+            initialProfiles={initialProfiles}
+            currentUserId={user.id}
+            dailyPicks={dailyPicks}
+            streak={streakData?.current_streak || 0}
+        />
     );
 }

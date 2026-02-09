@@ -13,30 +13,7 @@ import { cn } from '@/lib/utils';
 type Role = 'provider' | 'protege';
 type LifestyleTier = 'executive' | 'elite' | 'premium';
 
-const ROLES = [
-    {
-        id: 'provider' as Role,
-        title: 'Provider',
-        subtitle: 'I am here to provide',
-        description: 'Successful individuals seeking meaningful connections with ambitious companions.',
-        icon: Shield,
-        gradient: 'from-amber-500 to-orange-600',
-    },
-    {
-        id: 'protege' as Role,
-        title: 'Protégé',
-        subtitle: 'I am seeking growth',
-        description: 'Ambitious individuals seeking mentorship and elevated lifestyle experiences.',
-        icon: Star,
-        gradient: 'from-purple-500 to-pink-600',
-    },
-];
 
-const TIERS = [
-    { id: 'executive' as LifestyleTier, label: 'Executive', description: 'High-net-worth professional' },
-    { id: 'elite' as LifestyleTier, label: 'Elite', description: 'Ultra-high-net-worth' },
-    { id: 'premium' as LifestyleTier, label: 'Premium', description: 'First-class lifestyle' },
-];
 
 export default function OnboardingForm() {
     const router = useRouter();
