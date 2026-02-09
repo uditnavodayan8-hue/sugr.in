@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 // @ts-ignore
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { startAuth, verifyOtp } from '@/lib/actions/auth';
+import { useSignIn, useSignUp } from '@clerk/nextjs';
 
 interface AuthModalProps {
     isOpen: boolean;
@@ -15,7 +15,10 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+    const { isLoaded, signIn, setActive } = useSignIn();
+    const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
     const router = useRouter();
+
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
@@ -25,12 +28,55 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isLoaded || !isSignUpLoaded || !signIn || !signUp) return;
         setLoading(true);
+
         try {
-            const res = await startAuth(phone);
-            if (!res.success) throw new Error(res.message);
-            setStep('otp');
-            toast.success('Code sent', { description: 'Check your messages.' });
+            // Try to start sign in first
+            try {
+                const { supportedFirstFactors } = await signIn.create({
+                    identifier: phone,
+                });
+
+                const isPhoneCodeFactor = supportedFirstFactors?.find(
+                    (factor) => factor.strategy === 'phone_code'
+                );
+
+                if (isPhoneCodeFactor) {
+                    const { phoneNumberId } = isPhoneCodeFactor as any;
+                    await signIn.prepareFirstFactor({
+                        strategy: 'phone_code',
+                        phoneNumberId,
+                    });
+                    setStep('otp');
+                    toast.success('Code sent', { description: 'Check your messages.' });
+                    setLoading(false);
+                    return;
+                }
+            } catch (err) {
+                // Proceed to sign up
+            }
+
+            // Fallback to Sign Up
+            try {
+                await signUp.create({
+                    phoneNumber: phone,
+                });
+
+                await signUp.preparePhoneNumberVerification({
+                    strategy: 'phone_code',
+                });
+
+                setStep('otp');
+                toast.success('Code sent', { description: 'Welcome to sugr.' });
+
+            } catch (err: any) {
+                if (err.errors?.[0]?.code === 'form_identifier_exists') {
+                    toast.error("Account exists. Please try again.");
+                } else {
+                    toast.error(err.errors?.[0]?.message || "Failed to send code.");
+                }
+            }
         } catch (err: any) {
             toast.error(err.message);
         } finally {
@@ -40,13 +86,45 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     const handleVerifyOtp = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isLoaded || !isSignUpLoaded || !signIn || !signUp) return;
+        if (!isLoaded || !isSignUpLoaded || !signIn || !signUp) return;
         setLoading(true);
+
         try {
-            const res = await verifyOtp(phone, otp);
-            if (!res.success) throw new Error(res.message);
-            toast.success('Access Granted');
-            router.push('/dashboard');
-            onClose();
+            // Try finalizing Sign In first
+            try {
+                const result = await signIn.attemptFirstFactor({
+                    strategy: 'phone_code',
+                    code: otp,
+                });
+
+                if (result.status === 'complete') {
+                    await setActive({ session: result.createdSessionId });
+                    toast.success('Access Granted');
+                    router.push('/dashboard');
+                    onClose();
+                    return;
+                }
+            } catch (err) {
+                // Try sign up
+            }
+
+            // Try finalizing Sign Up
+            try {
+                const result = await signUp.attemptPhoneNumberVerification({
+                    code: otp,
+                });
+
+                if (result.status === 'complete') {
+                    await setSignUpActive({ session: result.createdSessionId });
+                    toast.success('Access Granted');
+                    router.push('/onboarding');
+                    onClose();
+                    return;
+                }
+            } catch (err: any) {
+                toast.error(err.errors?.[0]?.message || "Invalid Code");
+            }
         } catch (err: any) {
             toast.error(err.message);
         } finally {
