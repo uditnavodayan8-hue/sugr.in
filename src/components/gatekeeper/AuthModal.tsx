@@ -28,15 +28,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!isLoaded || !isSignUpLoaded || !signIn || !signUp) return;
+        console.log('[AuthModal] handleSendOtp started', { isLoaded, isSignUpLoaded, phone });
+
+        if (!isLoaded || !isSignUpLoaded || !signIn || !signUp) {
+            console.error('[AuthModal] Clerk not loaded');
+            return;
+        }
+
         setLoading(true);
 
         try {
             // Try to start sign in first
+            console.log('[AuthModal] Attempting signIn.create');
             try {
                 const { supportedFirstFactors } = await signIn.create({
                     identifier: phone,
                 });
+                console.log('[AuthModal] signIn.create success', { supportedFirstFactors });
 
                 const isPhoneCodeFactor = supportedFirstFactors?.find(
                     (factor) => factor.strategy === 'phone_code'
@@ -48,16 +56,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         strategy: 'phone_code',
                         phoneNumberId,
                     });
+                    console.log('[AuthModal] prepareFirstFactor success');
                     setStep('otp');
                     toast.success('Code sent', { description: 'Check your messages.' });
                     setLoading(false);
                     return;
+                } else {
+                    console.warn('[AuthModal] No phone code strategy found');
                 }
-            } catch (err) {
-                // Proceed to sign up
+            } catch (err: any) {
+                console.warn('[AuthModal] signIn.create failed (proceeding to signUp)', err);
             }
 
             // Fallback to Sign Up
+            console.log('[AuthModal] Attempting signUp.create');
             try {
                 await signUp.create({
                     phoneNumber: phone,
@@ -66,20 +78,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 await signUp.preparePhoneNumberVerification({
                     strategy: 'phone_code',
                 });
+                console.log('[AuthModal] signUp prepared success');
 
                 setStep('otp');
                 toast.success('Code sent', { description: 'Welcome to sugr.' });
 
             } catch (err: any) {
+                console.error('[AuthModal] signUp failed', err);
                 if (err.errors?.[0]?.code === 'form_identifier_exists') {
-                    toast.error("Account exists. Please try again.");
+                    // Try to recover: force sign in?
+                    toast.error("Account exists. Please try signing in again.");
+                    console.warn('[AuthModal] Account exists but signIn failed earlier?');
                 } else {
                     toast.error(err.errors?.[0]?.message || "Failed to send code.");
                 }
             }
         } catch (err: any) {
+            console.error('[AuthModal] Critical error', err);
             toast.error(err.message);
         } finally {
+            console.log('[AuthModal] handleSendOtp finished');
             setLoading(false);
         }
     };
