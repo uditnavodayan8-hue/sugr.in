@@ -95,69 +95,15 @@ export default function ProfileDossier({ userId, className }: ProfileDossierProp
             )}
         >
             {/* Background Gradient */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
 
-            <div className="relative z-10">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            {profile.avatar_url ? (
-                                <img src={profile.avatar_url} alt={profile.full_name} className="w-16 h-16 rounded-full object-cover border-2 border-white/10" />
-                            ) : (
-                                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center border-2 border-white/10">
-                                    <User className="w-8 h-8 text-white/30" />
-                                </div>
-                            )}
-                            <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-1 border border-white/10">
-                                {profile.role === 'provider' ? (
-                                    <Shield className="w-3 h-3 text-yellow-400" fill="currentColor" />
-                                ) : (
-                                    <Star className="w-3 h-3 text-purple-400" fill="currentColor" />
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h2 className="text-xl font-bold text-white">{profile.full_name || 'Anonymous'}</h2>
-                            <p className="text-sm text-white/50 capitalize">{profile.role}</p>
-                        </div>
-                    </div>
-
-                    <div className="text-right">
-                        <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">Sugr Index</p>
-                        <div className="text-2xl font-mono text-emerald-400">{profile.sugr_index ?? 1}</div>
-                    </div>
+            {/* Bio */}
+            {profile.bio && (
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <p className="text-sm text-white/80 leading-relaxed italic">
+                        "{profile.bio}"
+                    </p>
                 </div>
-
-                {/* Stats / Tags */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {profile.lifestyle_tier && (
-                        <span className="px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-white/70">
-                            {profile.lifestyle_tier}
-                        </span>
-                    )}
-                    {profile.location && (
-                        <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-white/70">
-                            <MapPin size={12} /> {profile.location}
-                        </span>
-                    )}
-                    {profile.occupation && (
-                        <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-white/70">
-                            <Briefcase size={12} /> {profile.occupation}
-                        </span>
-                    )}
-                </div>
-
-                {/* Bio */}
-                {profile.bio && (
-                    <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                        <p className="text-sm text-white/80 leading-relaxed italic">
-                            "{profile.bio}"
-                        </p>
-                    </div>
-                )}
-            </div>
+            )}
         </motion.div>
     );
 }

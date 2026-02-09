@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // "Ghost" Identity Check: Ensure user has a role
-    if (user && !pathname.startsWith('/onboarding') && !pathname.startsWith('/api') && !pathname.includes('.')) {
+    if (user && !pathname.startsWith('/onboarding') && !pathname.startsWith('/auth') && !pathname.startsWith('/api') && !pathname.includes('.')) {
         const { data: profile } = await supabase
             .from('profiles')
             .select('role')

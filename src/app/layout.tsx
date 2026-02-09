@@ -7,6 +7,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { SugrProvider } from '@/context/SugrContext';
 import { Toaster } from 'sonner';
 import BottomNav from '@/components/layout/BottomNav';
+import { RealtimeEngine } from '@/components/layout/RealtimeEngine';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair' });
@@ -32,6 +33,7 @@ export default function RootLayout({
         <PanicProvider>
           <AuthProvider>
             <SugrProvider>
+              <RealtimeEngine />
               {children}
               <Toaster position="top-center" toastOptions={{
                 className: 'bg-zinc-900 border border-zinc-800 text-white font-sans',
