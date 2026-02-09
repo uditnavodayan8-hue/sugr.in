@@ -65,8 +65,9 @@ export default function NoirAuth() {
                     muted
                     playsInline
                     className="w-full h-full object-cover"
+                    poster="https://images.pexels.com/photos/3195394/pexels-photo-3195394.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
                 >
-                    <source src="https://cdn.coverr.co/videos/coverr-night-city-traffic-1563/1080p.mp4" type="video/mp4" />
+                    <source src="https://videos.pexels.com/video-files/3195394/3195394-hd_1920_1080_25fps.mp4" type="video/mp4" />
                 </video>
                 <div className="absolute inset-0 bg-black/60" /> {/* Overlay */}
             </div>
