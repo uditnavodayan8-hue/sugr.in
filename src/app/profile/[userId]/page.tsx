@@ -6,6 +6,7 @@ import { ArrowLeft, Loader2, MapPin, Shield, MoreHorizontal, UserPlus, UserCheck
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { getProfile, Profile } from '@/lib/services/profiles';
+// Import matches service
 import { getMatches, Match } from '@/lib/services/matches';
 import { sendAccessRequest } from '@/lib/services/access';
 import { getProfileFeed, Post } from '@/lib/services/feed';
