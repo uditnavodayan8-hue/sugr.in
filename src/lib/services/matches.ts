@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '../supabase/client';
 import { Profile } from './profiles';
+import { createSwipe as createSwipeAction } from '@/lib/actions/matches';
 
 export interface Match {
     id: string; // The match ID (from matches table)
@@ -11,6 +12,9 @@ export interface Match {
 }
 
 const supabase = getSupabaseClient();
+
+// Re-export Server Action for compatibility
+export const createSwipe = createSwipeAction;
 
 export async function getMatches(userId: string): Promise<Match[]> {
     if (!userId) return [];
