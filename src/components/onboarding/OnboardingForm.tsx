@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Shield, Star, ArrowRight, Check, Upload, Camera } from 'lucide-react';
 import Step1_Role from './Step1_Role';
 import Step2_Dossier from './Step2_Dossier';
 import Step3_Identity from './Step3_Identity';
