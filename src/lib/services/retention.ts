@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface DailyStreak {
     user_id: string;
@@ -7,13 +7,11 @@ export interface DailyStreak {
     updated_at: string;
 }
 
-const supabase = getSupabaseClient();
-
 /**
  * Check and update the user's daily streak.
  * Should be called on app launch/dashboard load.
  */
-export async function checkDailyStreak(userId: string): Promise<DailyStreak | null> {
+export async function checkDailyStreak(userId: string, supabase: SupabaseClient): Promise<DailyStreak | null> {
     if (!userId) return null;
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -89,7 +87,7 @@ export async function checkDailyStreak(userId: string): Promise<DailyStreak | nu
     return updatedStreak as DailyStreak;
 }
 
-export async function getStreak(userId: string): Promise<number> {
+export async function getStreak(userId: string, supabase: SupabaseClient): Promise<number> {
     const { data } = await supabase
         .from('daily_streaks')
         .select('current_streak')

@@ -1,175 +1,97 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Step1_Role from './Step1_Role';
 import Step2_Dossier from './Step2_Dossier';
-import Step3_Identity from './Step3_Identity';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import Step3_Photos from './Step3_Photos'; // Assuming you created this
+import { updateProfile } from '@/app/actions/profile'; // Use the generic update
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
-type Role = 'provider' | 'protege';
-type LifestyleTier = 'executive' | 'elite' | 'premium';
-
-
+type OnboardingStep = 'role' | 'dossier' | 'photos';
 
 export default function OnboardingForm() {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const mode = searchParams.get('mode');
-    const isEditMode = mode === 'edit';
-    const initialStep = searchParams.get('step') === 'verify' ? 3 : (isEditMode ? 2 : 1);
-
-    const [step, setStep] = useState(initialStep);
-    const [role, setRole] = useState<Role | null>(null);
-    const [username, setUsername] = useState('');
-    const [tier, setTier] = useState<LifestyleTier>('executive');
-    const [bio, setBio] = useState('');
+    const [step, setStep] = useState<OnboardingStep>('role');
     const [loading, setLoading] = useState(false);
-    const [fetching, setFetching] = useState(isEditMode); // Add loading state for fetching profile
+    const router = useRouter();
 
-    const supabase = getSupabaseClient();
+    const [formData, setFormData] = useState({
+        role: '' as 'provider' | 'protege' | '',
+        name: '',
+        age: '',
+        city: '',
+        username: '',
+        bio: '',
+        tier: 'executive' as 'executive' | 'elite' | 'premium',
+    });
 
-    // Fetch profile data if in edit mode
-    useEffect(() => {
-        if (!isEditMode) return;
-
-        async function fetchProfile() {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('role, username, lifestyle_tier, bio')
-                    .eq('id', user.id)
-                    .single();
-
-                if (error) throw error;
-                if (data) {
-                    if (data.role) setRole(data.role as Role);
-                    if (data.username) setUsername(data.username);
-                    if (data.lifestyle_tier) setTier(data.lifestyle_tier as LifestyleTier);
-                    if (data.bio) setBio(data.bio);
-                }
-            } catch (err) {
-                console.error('Error fetching profile:', err);
-                toast.error('Failed to load profile data');
-            } finally {
-                setFetching(false);
-            }
-        }
-
-        fetchProfile();
-    }, [isEditMode, supabase]);
-
-    const handleRoleSelect = (selectedRole: Role) => {
-        setRole(selectedRole);
-        setTimeout(() => setStep(2), 300);
+    const handleRoleSelect = (role: 'provider' | 'protege') => {
+        setFormData(prev => ({ ...prev, role }));
+        setStep('dossier');
     };
 
-    const handleProfileSubmit = async () => {
-        if (!role || !username.trim()) {
-            toast.error('Please complete all fields');
-            return;
-        }
+    const handleDossierChange = (field: string, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
 
+    const handleDossierSubmit = () => {
+        setStep('photos');
+    };
+
+    const handlePhotoComplete = async (photoUrl: string) => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
+            // Final Submission
+            await updateProfile({
+                role: formData.role as string,
+                username: formData.username,
+                lifestyle_tier: formData.tier,
+                bio: formData.bio,
+                name: formData.name,
+                age: parseInt(formData.age),
+                city: formData.city,
+            });
 
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    role,
-                    username,
-                    lifestyle_tier: tier,
-                    bio,
-                })
-                .eq('id', user.id);
-
-            if (error) throw error;
-
-            toast.success(isEditMode ? 'Profile updated successfully' : 'Profile created!');
-
-            if (isEditMode) {
-                router.push('/profile');
-            } else {
-                setStep(3);
-            }
-        } catch (err: any) {
-            toast.error('Failed to update profile', { description: err.message });
-        } finally {
+            // Redirect
+            router.push('/dashboard');
+        } catch (error: any) {
+            toast.error('Failed to create profile', { description: error.message });
             setLoading(false);
         }
-    };
-
-    const handleVerificationInitiate = async () => {
-        setLoading(true);
-        // Simulate verification initiation
-        setTimeout(() => {
-            setLoading(false);
-            toast.info('Verification initiated', {
-                description: 'Please follow the instructions sent to your email.'
-            });
-            // For demo purposes, we might want to just complete it via a developer tool later
-        }, 1500);
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            {/* Progress - Hide in edit mode or show full? Let's hide it in edit mode as it's not really a wizard flow then, or keep it 100%? */}
-            {!isEditMode && (
-                <div className="fixed top-0 left-0 right-0 h-1 bg-white/10 z-50">
-                    <motion.div
-                        className="h-full bg-white"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(step / 3) * 100}%` }}
-                        transition={{ duration: 0.5 }}
-                    />
-                </div>
-            )}
+        <div className="min-h-screen bg-black text-white flex items-center justify-center overflow-hidden relative">
+            {/* Background elements (subtle) */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-zinc-900 via-black to-black opacity-50 z-0" />
 
-            <div className="flex-1 flex items-center justify-center p-6">
-                {fetching ? (
-                    <div className="flex items-center gap-2 text-white/50">
-                        <span className="animate-spin text-xl">◌</span> Loading profile...
-                    </div>
-                ) : (
-                    <AnimatePresence mode="wait">
-                        {/* Step 1: Role Selection (Liquid UI) */}
-                        {step === 1 && (
-                            <Step1_Role onSelect={(r) => handleRoleSelect(r)} />
-                        )}
+            <div className="relative z-10 w-full max-w-4xl flex justify-center">
+                <AnimatePresence mode="wait">
+                    {step === 'role' && (
+                        <Step1_Role key="step1" onSelect={handleRoleSelect} />
+                    )}
 
-                        {/* Step 2: Profile Details */}
-                        {step === 2 && (
-                            <Step2_Dossier
-                                username={username}
-                                setUsername={setUsername}
-                                tier={tier}
-                                setTier={setTier}
-                                bio={bio}
-                                setBio={setBio}
-                                loading={loading}
-                                onSubmit={handleProfileSubmit}
-                                onBack={() => isEditMode ? router.back() : setStep(1)}
-                                isEditMode={isEditMode}
-                            />
-                        )}
+                    {step === 'dossier' && (
+                        <Step2_Dossier
+                            key="step2"
+                            data={formData}
+                            onChange={handleDossierChange}
+                            onSubmit={handleDossierSubmit}
+                            loading={false}
+                            onBack={() => setStep('role')}
+                        />
+                    )}
 
-                        {/* Step 3: Identity Anchor (Verification) */}
-                        {step === 3 && !isEditMode && (
-                            <Step3_Identity
-                                loading={loading}
-                                onInitiate={handleVerificationInitiate}
-                            />
-                        )}
-                    </AnimatePresence>
-                )}
+                    {step === 'photos' && (
+                        <Step3_Photos
+                            key="step3"
+                            onBack={() => setStep('dossier')}
+                            onComplete={handlePhotoComplete}
+                            loading={loading}
+                        />
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

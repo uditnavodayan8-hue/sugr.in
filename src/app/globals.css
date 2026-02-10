@@ -23,117 +23,90 @@
   --radius: 0.5rem;
 
   /* Fonts */
-  --font-serif: var(--font-playfair);
-  --font-sans: var(--font-inter);
+  --font-serif: "Playfair Display", serif;
+  --font-sans: "Lato", sans-serif;
 }
 
 :root {
+  /* SUGR Luxury Palette */
   --background: #050505;
-  --foreground: #E5E5E5;
+  /* Deepest Black */
+  --foreground: #F7E7CE;
+  /* Champagne Gold Text */
 
   --card: #121212;
-  --card-foreground: #E5E5E5;
+  --card-foreground: #F7E7CE;
 
   --popover: #0D0D0D;
-  --popover-foreground: #E5E5E5;
+  --popover-foreground: #F7E7CE;
 
-  --primary: #F7E7CE;
-  /* Champagne Gold */
+  --primary: #D4AF37;
+  /* Metallic Gold */
   --primary-foreground: #000000;
 
-  --secondary: #262626;
-  --secondary-foreground: #F7E7CE;
+  --secondary: #1A0505;
+  /* Deep Burgundy */
+  --secondary-foreground: #D4AF37;
 
   --muted: #1A1A1A;
   --muted-foreground: #A3A3A3;
 
-  --accent: #1A1A1A;
-  --accent-foreground: #F7E7CE;
+  --accent: #2A0505;
+  /* Rich Burgundy Accent */
+  --accent-foreground: #D4AF37;
 
   --destructive: #990000;
   /* Deep Red */
-  --destructive-foreground: #E5E5E5;
+  --destructive-foreground: #FFFFFF;
 
   --border: #333333;
   --input: #1A1A1A;
-  --ring: #F7E7CE;
+  --ring: #D4AF37;
 
-  /* === SUGR DESIGN TOKENS === */
-  --sugr-champagne: #F7E7CE;
+  --radius: 0.75rem;
+
+  /* Custom SUGR variables */
+  --sugr-gold: #D4AF37;
+  --sugr-gold-dark: #B8941F;
+  --sugr-burgundy: #2A0505;
   --sugr-crimson: #DC143C;
-  --sugr-noir-deep: #050505;
-  --sugr-noir-surface: #0A0A0A;
-  --sugr-noir-elevated: #121212;
-  --sugr-noir-border: #1A1A1A;
-  --sugr-text-primary: #FFFFFF;
-  --sugr-text-secondary: rgba(255, 255, 255, 0.6);
-  --sugr-text-muted: rgba(255, 255, 255, 0.4);
+}
+
+/* Typography Defaults */
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  letter-spacing: 0.02em;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-feature-settings: "rlig" 1, "calt" 1;
+  font-family: var(--font-sans);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
-  background-size: cover;
-  background-attachment: fixed;
 }
 
+/* Utilities */
 @utility glass-panel {
   background: rgba(18, 18, 18, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(247, 231, 206, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.1);
 }
 
 @utility text-gold {
-  @apply text-[#F7E7CE];
+  @apply text-[#D4AF37];
 }
 
 @utility border-gold {
-  @apply border-[#F7E7CE];
+  @apply border-[#D4AF37];
 }
 
 @utility bg-gold {
-  @apply bg-[#F7E7CE];
+  @apply bg-[#D4AF37];
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #050505;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 0px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #F7E7CE;
-}
-
-/* === SUGR UTILITY CLASSES === */
-@utility text-crimson {
-  @apply text-[#DC143C];
-}
-
-@utility bg-crimson {
-  @apply bg-[#DC143C];
-}
-
-@utility no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* === ANIMATIONS === */
+/* Animations */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -152,14 +125,14 @@ body {
 
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(220, 20, 60, 0.3);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
   }
 
   50% {
-    box-shadow: 0 0 40px rgba(220, 20, 60, 0.6);
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
   }
 }
 
 @utility animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+  animation: pulse-glow 3s ease-in-out infinite;
 }

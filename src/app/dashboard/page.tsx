@@ -1,85 +1,91 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import DashboardContent from '@/components/dashboard/DashboardContent';
 import { Profile } from '@/lib/services/profiles';
 import { getDailyPicks } from '@/lib/services/curation';
 import { checkDailyStreak } from '@/lib/services/retention';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 export default async function DashboardPage() {
-    const cookieStore = await cookies();
+    const { userId, getToken } = await auth();
+    const user = await currentUser();
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                getAll() {
-                    return cookieStore.getAll();
-                },
-                setAll(cookiesToSet) {
-                    try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        );
-                    } catch {
-                        // Server Component context
-                    }
-                },
-            },
-        }
-    );
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    if (!userId || !user) {
         redirect('/');
     }
 
-    const { data: profile } = await supabase
+    const adminSupabase = createAdminClient();
+
+    // 1. Ensure Profile Exists with default values
+    const { data: profile, error } = await adminSupabase
         .from('profiles')
-        .select('role')
-        .eq('id', user.id)
+        .select('*')
+        .eq('id', userId)
         .single();
 
-    if (!profile?.role) {
+    let currentProfile = profile;
+
+    if (!currentProfile) {
+        console.log("Profile missing, creating with defaults...");
+        const autoUsername = user.firstName
+            ? `${user.firstName.toLowerCase()}${userId.slice(-4)}`
+            : `user_${userId.slice(-6)}`;
+
+        const { data: newProfile, error: createError } = await adminSupabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                username: autoUsername,
+                full_name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Anonymous',
+                avatar_url: user.imageUrl,
+                role: null, // Force onboarding
+                lifestyle_tier: 'executive',
+                bio: '',
+                created_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+        if (createError) {
+            console.error("Failed to create profile:", createError);
+        }
+        currentProfile = newProfile;
+    }
+
+    // 2. Redirect to Onboarding if incomplete
+    if (!currentProfile?.role) {
         redirect('/onboarding');
     }
 
+    // 3. Normal Data Fetching
+    const token = await getToken({ template: 'supabase' });
+    const supabase = await createClient(token || undefined);
 
-    // Determine target role for discovery
-    const targetRole = profile.role === 'provider' ? 'protege' : 'provider';
-
-    // Fetch profiles for the swipe feed
-    // Exclude current user and filter by opposite role
-    const { data: profiles, error } = await supabase
+    // Fetch all profiles for the swipe feed (not filtering by role)
+    const { data: profiles, error: fetchError } = await supabase
         .from('profiles')
         .select('*, photos:profile_photos(*)')
-        .neq('id', user.id)
-        .eq('role', targetRole)
-        .not('avatar_url', 'is', null) // Only show valid profiles
-        .order('last_seen', { ascending: false }) // Show active users first
+        .neq('id', userId)
+        // .not('avatar_url', 'is', null) // Temporarily allow no-avatar profiles for testing
+        // .order('last_seen', { ascending: false }) // Column likely missing
         .limit(20);
 
-    if (error) {
-        console.error("Error fetching profiles:", error);
+    if (fetchError) {
+        console.error("Error fetching profiles:", fetchError);
     }
 
-    // Ensure type safety
     const initialProfiles = (profiles || []) as unknown as Profile[];
-
-    // Fetch Engagement Data
-    const dailyPicks = await getDailyPicks(user.id);
-    const streakData = await checkDailyStreak(user.id);
+    const dailyPicks = await getDailyPicks(userId, supabase);
+    const streakData = await checkDailyStreak(userId, supabase);
 
     return (
         <DashboardContent
             initialProfiles={initialProfiles}
-            currentUserId={user.id}
+            currentUserId={userId}
             dailyPicks={dailyPicks}
             streak={streakData?.current_streak || 0}
+            userHasAvatar={!!currentProfile?.avatar_url}
         />
     );
 }

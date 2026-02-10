@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
+    "@clerk/themes": "^2.4.51",
+    "@fontsource/lato": "^5.2.7",
+    "@fontsource/playfair-display": "^5.2.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/ssr": "^0.8.0",
@@ -17,7 +20,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "framer-motion": "^12.31.0",
+    "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",

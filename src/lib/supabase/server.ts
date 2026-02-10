@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export async function createClient() {
+export async function createClient(accessToken?: string) {
     const cookieStore = await cookies();
 
     return createServerClient(
@@ -21,6 +21,11 @@ export async function createClient() {
                         // Called from Server Component - ignore
                     }
                 },
+            },
+            global: {
+                headers: accessToken ? {
+                    Authorization: `Bearer ${accessToken}`,
+                } : {},
             },
         }
     );

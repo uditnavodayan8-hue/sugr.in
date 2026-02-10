@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../supabase/client';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { getDiscoveryProfiles, Profile } from './profiles';
 
 export interface DailyPick {
@@ -7,9 +7,7 @@ export interface DailyPick {
     expires_at: string;
 }
 
-const supabase = getSupabaseClient();
-
-export async function getDailyPicks(userId: string): Promise<DailyPick[]> {
+export async function getDailyPicks(userId: string, supabase: SupabaseClient): Promise<DailyPick[]> {
     // 1. Check existing picks
     const { data: existingPicks, error } = await supabase
         .from('daily_picks')
@@ -32,13 +30,16 @@ export async function getDailyPicks(userId: string): Promise<DailyPick[]> {
     }
 
     // 2. Generate new picks if none exist
-    return await generateDailyPicks(userId);
+    return await generateDailyPicks(userId, supabase);
 }
 
-async function generateDailyPicks(userId: string): Promise<DailyPick[]> {
+async function generateDailyPicks(userId: string, supabase: SupabaseClient): Promise<DailyPick[]> {
     // Fetch random profiles from discovery
     // In a real app, this would be a sophisticated algorithm
     // For now, we fetch 20 and pick 5 random ones
+    // NOTE: getDiscoveryProfiles still uses the global client internally, 
+    // but for now we are fixing the direct database calls in this service. 
+    // Ideally getDiscoveryProfiles should also be refactored.
     const profiles = await getDiscoveryProfiles(userId, { limit: 20 });
 
     if (profiles.length === 0) return [];
