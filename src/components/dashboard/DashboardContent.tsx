@@ -11,6 +11,7 @@ import { DailyPick } from '@/lib/services/curation';
 import { Activity, Radio, Plus, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TripsFeed } from '../trips/TripsFeed';
 
 interface DashboardContentProps {
     initialProfiles: Profile[];
@@ -27,7 +28,7 @@ export default function DashboardContent({
     dailyPicks = [],
     userHasAvatar = true
 }: DashboardContentProps) {
-    const [activeTab, setActiveTab] = useState<'discover' | 'broadcasts'>('discover');
+    const [activeTab, setActiveTab] = useState<'discover' | 'trips' | 'broadcasts'>('discover');
     const [showPfpModal, setShowPfpModal] = useState(false);
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
 
@@ -39,7 +40,7 @@ export default function DashboardContent({
     }, [userHasAvatar]);
 
     return (
-        <main className="relative h-screen overflow-hidden bg-black text-white">
+        <main className="relative h-screen overflow-hidden bg-[#0A0A0A] text-white">
             <DashboardHeader streak={streak} />
 
             {/* TAB CONTENT */}
@@ -49,6 +50,14 @@ export default function DashboardContent({
                         <DailyPicks picks={dailyPicks} />
                         <SwipeFeed initialProfiles={initialProfiles} currentUserId={currentUserId} />
                     </>
+                ) : activeTab === 'trips' ? (
+                    <div className="p-4 pt-8">
+                        <div className="text-center mb-8">
+                            <h2 className="text-3xl font-medium text-[#D4AF37] mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>Luxury Escapes</h2>
+                            <p className="text-white/40 text-sm italic">Discover exclusive travel opportunities</p>
+                        </div>
+                        <TripsFeed />
+                    </div>
                 ) : (
                     <BroadcastFeed currentUserId={currentUserId} />
                 )}
@@ -61,49 +70,55 @@ export default function DashboardContent({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowBroadcastModal(true)}
-                    className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg"
+                    className="w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B08D26] flex items-center justify-center shadow-[0_0_20px_rgba(212,175,55,0.3)]"
                 >
-                    <Plus size={24} className="text-white" />
-                </motion.button>
-
-                {/* Update Profile Picture */}
-                <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setShowPfpModal(true)}
-                    className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20"
-                >
-                    <Camera size={20} className="text-white/70" />
+                    <Plus size={24} className="text-black" />
                 </motion.button>
             </div>
 
             {/* BOTTOM TAB BAR */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/80 backdrop-blur-md px-2 py-2 rounded-full border border-white/10 flex items-center gap-1 shadow-2xl">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/60 backdrop-blur-xl px-2 py-2 rounded-full border border-[#D4AF37]/20 flex items-center gap-1 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
                 <button
                     onClick={() => setActiveTab('discover')}
                     className={cn(
-                        "relative px-4 py-2 rounded-full flex items-center gap-2 transition-all",
-                        activeTab === 'discover' ? "bg-white text-black" : "text-white/50 hover:text-white"
+                        "relative px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300",
+                        activeTab === 'discover' ? "text-black" : "text-white/40 hover:text-white/70"
                     )}
                 >
-                    <Activity size={18} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Discover</span>
+                    <Activity size={18} className="relative z-10" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] relative z-10">Discover</span>
                     {activeTab === 'discover' && (
-                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-white rounded-full -z-10" />
+                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-[#D4AF37] rounded-full z-0" />
+                    )}
+                </button>
+
+                <button
+                    onClick={() => setActiveTab('trips')}
+                    className={cn(
+                        "relative px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300",
+                        activeTab === 'trips' ? "text-black" : "text-white/40 hover:text-white/70"
+                    )}
+                >
+                    <div className="relative z-10 flex items-center gap-2">
+                        <Plus size={18} className="rotate-45" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Trips</span>
+                    </div>
+                    {activeTab === 'trips' && (
+                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-[#D4AF37] rounded-full z-0" />
                     )}
                 </button>
 
                 <button
                     onClick={() => setActiveTab('broadcasts')}
                     className={cn(
-                        "relative px-4 py-2 rounded-full flex items-center gap-2 transition-all",
-                        activeTab === 'broadcasts' ? "bg-white text-black" : "text-white/50 hover:text-white"
+                        "relative px-4 py-2 rounded-full flex items-center gap-2 transition-all duration-300",
+                        activeTab === 'broadcasts' ? "text-black" : "text-white/40 hover:text-white/70"
                     )}
                 >
-                    <Radio size={18} />
-                    <span className="text-xs font-bold uppercase tracking-wider">Signals</span>
+                    <Radio size={18} className="relative z-10" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] relative z-10">Signals</span>
                     {activeTab === 'broadcasts' && (
-                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-white rounded-full -z-10" />
+                        <motion.div layoutId="activeTab" className="absolute inset-0 bg-[#D4AF37] rounded-full z-0" />
                     )}
                 </button>
             </div>

@@ -29,6 +29,12 @@ export interface Profile {
     trust_score: number;
     created_at: string;
     photos?: ProfilePhoto[];
+    // Luxury Feature Fields
+    images?: string[];
+    occupation?: string;
+    allowance_range?: string;
+    looking_for?: string[];
+    lifestyle_tags?: string[];
 }
 
 export interface DiscoveryFilters {
