@@ -22,7 +22,7 @@ export default function Step1_Role({ onSelect }: Step1_RoleProps) {
     };
 
     return (
-        <div className="absolute inset-0 flex flex-col md:flex-row bg-black overflow-hidden">
+        <div className="relative w-full h-[80vh] min-h-[500px] max-h-[700px] flex flex-col md:flex-row bg-black overflow-hidden rounded-3xl border border-white/10 shadow-2xl">
             {/* Background Videos Layer */}
             <div className="absolute inset-0 z-0">
                 {/* Default Ambient Video (when nothing hovered) */}
