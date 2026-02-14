@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         const { id, email_addresses, first_name, last_name, image_url } = evt.data;
 
         try {
-            const supabase = createClient();
+            const supabase = await createClient();
 
             // Update profile in Supabase
             const { error } = await supabase
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         const { id } = evt.data;
 
         try {
-            const supabase = createClient();
+            const supabase = await createClient();
 
             // Delete profile from Supabase
             const { error } = await supabase
