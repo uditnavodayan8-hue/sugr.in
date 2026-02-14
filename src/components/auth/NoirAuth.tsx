@@ -11,10 +11,14 @@ import 'react-phone-number-input/style.css';
 import { cn } from '@/lib/utils';
 import { useSignIn, useSignUp } from '@clerk/nextjs';
 
+import { useSearchParams } from 'next/navigation';
+
 export default function NoirAuth() {
     const { isLoaded, signIn, setActive } = useSignIn();
     const { isLoaded: isSignUpLoaded, signUp, setActive: setSignUpActive } = useSignUp();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectUrl = searchParams.get('redirect_url') || '/onboarding';
 
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
     const [phone, setPhone] = useState('');
@@ -99,7 +103,7 @@ export default function NoirAuth() {
                 if (result.status === 'complete') {
                     await setActive({ session: result.createdSessionId });
                     toast.success('Access Granted - Welcome Back');
-                    router.push('/dashboard');
+                    router.push(redirectUrl);
                     return;
                 }
             } catch (err) {
@@ -115,7 +119,7 @@ export default function NoirAuth() {
                 if (result.status === 'complete') {
                     await setSignUpActive({ session: result.createdSessionId });
                     toast.success('Access Granted - Account Created');
-                    router.push('/onboarding');
+                    router.push(redirectUrl);
                     return;
                 }
             } catch (err: any) {

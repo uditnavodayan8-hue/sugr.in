@@ -24,50 +24,72 @@
 
   /* Fonts */
   --font-serif: "Playfair Display", serif;
-  --font-sans: "Lato", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Manrope", sans-serif;
+
+  /* Custom Colors from New Design */
+  --color-primary-dim: #b39600;
+  --color-background-dark: #121212;
+  --color-surface-dark: #1E1E1E;
+  --color-surface-light: #2a2a2a;
+  --color-gold-light: #fff3b0;
+
+  /* Animations */
+  --animate-fade-in-up: fadeInUp 0.8s ease-out forwards;
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 :root {
-  /* SUGR Luxury Palette */
-  --background: #050505;
-  /* Deepest Black */
-  --foreground: #F7E7CE;
-  /* Champagne Gold Text */
+  /* SUGR Luxury Palette - Updated with New Design values where applicable */
+  --background: #121212;
+  /* background-dark */
+  --foreground: #ffffff;
 
-  --card: #121212;
-  --card-foreground: #F7E7CE;
+  --card: #1E1E1E;
+  /* surface-dark */
+  --card-foreground: #ffffff;
 
-  --popover: #0D0D0D;
-  --popover-foreground: #F7E7CE;
+  --popover: #1E1E1E;
+  --popover-foreground: #ffffff;
 
-  --primary: #D4AF37;
-  /* Metallic Gold */
+  --primary: #f2cc0d;
+  /* New Design Primary */
   --primary-foreground: #000000;
 
   --secondary: #1A0505;
-  /* Deep Burgundy */
-  --secondary-foreground: #D4AF37;
+  --secondary-foreground: #f2cc0d;
 
-  --muted: #1A1A1A;
+  --muted: #2a2a2a;
+  /* surface-light */
   --muted-foreground: #A3A3A3;
 
   --accent: #2A0505;
-  /* Rich Burgundy Accent */
-  --accent-foreground: #D4AF37;
+  --accent-foreground: #f2cc0d;
 
   --destructive: #990000;
-  /* Deep Red */
   --destructive-foreground: #FFFFFF;
 
   --border: #333333;
   --input: #1A1A1A;
-  --ring: #D4AF37;
+  --ring: #f2cc0d;
 
   --radius: 0.75rem;
 
   /* Custom SUGR variables */
-  --sugr-gold: #D4AF37;
-  --sugr-gold-dark: #B8941F;
+  --sugr-gold: #f2cc0d;
+  --sugr-gold-dark: #b39600;
   --sugr-burgundy: #2A0505;
   --sugr-crimson: #DC143C;
 }
@@ -84,29 +106,55 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Scrollbar Hiding */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Utilities */
 @utility glass-panel {
-  background: rgba(18, 18, 18, 0.6);
+  background: rgba(30, 30, 30, 0.6);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(212, 175, 55, 0.1);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@utility text-gold-gradient {
+  background: linear-gradient(to right, #f2cc0d, #fff0a8, #f2cc0d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+}
+
+@utility bg-gold-gradient {
+  background-image: linear-gradient(135deg, #f2cc0d 0%, #d4b20b 100%);
+}
+
+@utility bg-matte-black {
+  background-image: linear-gradient(145deg, #1a1a1a, #0a0a0a);
 }
 
 @utility text-gold {
-  @apply text-[#D4AF37];
+  @apply text-[#f2cc0d];
 }
 
 @utility border-gold {
-  @apply border-[#D4AF37];
+  @apply border-[#f2cc0d];
 }
 
 @utility bg-gold {
-  @apply bg-[#D4AF37];
+  @apply bg-[#f2cc0d];
 }
 
-/* Animations */
+/* Animations from previous globals */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -125,11 +173,11 @@ body {
 
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 20px rgba(242, 204, 13, 0.1);
   }
 
   50% {
-    box-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
+    box-shadow: 0 0 40px rgba(242, 204, 13, 0.3);
   }
 }
 

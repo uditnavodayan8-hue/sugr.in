@@ -1,93 +1,71 @@
-'use client';
-import { useState, useEffect } from 'react';
+"use client";
+
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MessageCircle, User, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/context/AuthContext';
-import { motion } from 'framer-motion';
-import { getUnreadCount, subscribeToNotifications } from '@/lib/services/notifications';
+import { Icon } from '@/components/ui/Icon';
 
-export default function BottomNav() {
+export const BottomNav: React.FC = () => {
     const pathname = usePathname();
-    const { user } = useAuth();
-    const [unreadCount, setUnreadCount] = useState(0);
 
-    // Fetch unread count
-    useEffect(() => {
-        if (!user) return;
+    const isActive = (path: string) => {
+        if (path === '/discovery' && (pathname === '/discovery' || pathname.startsWith('/profile/'))) {
+            return true;
+        }
+        if (path === '/chat' && (pathname === '/chat' || pathname.startsWith('/chat/'))) {
+            return true;
+        }
+        return pathname === path;
+    };
 
-        getUnreadCount(user.id).then(setUnreadCount);
-
-        // Subscribe to new notifications
-        const unsubscribe = subscribeToNotifications(user.id, () => {
-            setUnreadCount(prev => prev + 1);
-        });
-
-        return unsubscribe;
-    }, [user]);
-
-    // Hide on auth/onboarding pages
-    const isHidden =
-        pathname.startsWith('/auth') ||
-        pathname.startsWith('/onboarding') ||
-        (pathname === '/' && !user);
-
-    if (isHidden) return null;
-
-    const navItems = [
-        { href: '/dashboard', icon: Sparkles, label: 'Discover', badge: 0 },
-        { href: '/chat', icon: MessageCircle, label: 'Messages', badge: unreadCount },
-        { href: '/profile', icon: User, label: 'You', badge: 0 },
-    ];
+    const getIconColor = (path: string) => {
+        return isActive(path) ? "text-primary" : "text-gray-500 hover:text-gray-300";
+    };
 
     return (
-        <motion.nav
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5, duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
-        >
-            <div className="flex items-center gap-2 px-3 py-3 rounded-full bg-[#1C1C1E]/90 backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-                {navItems.map((item) => {
-                    const isActive = pathname === item.href ||
-                        (item.href === '/chat' && pathname.startsWith('/chat'));
+        <nav className="fixed bottom-0 w-full bg-surface-dark/95 backdrop-blur-xl border-t border-white/5 pb-4 pt-2 z-50">
+            <div className="flex justify-around items-center px-2 h-16">
+                <Link
+                    href="/discovery"
+                    className={`flex flex-col items-center gap-1 w-16 group ${getIconColor('/discovery')}`}
+                >
+                    <div className="relative">
+                        <Icon name="style" className="text-2xl transition-all" filled={isActive('/discovery')} />
+                        {isActive('/discovery') && (
+                            <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary rounded-full shadow-[0_0_10px_#f2cc0d]"></span>
+                        )}
+                    </div>
+                    <span className="text-[10px] font-medium mt-1">Discover</span>
+                </Link>
 
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={cn(
-                                "relative flex items-center gap-2 px-5 py-3 rounded-full transition-all duration-300",
-                                isActive
-                                    ? "bg-[#F7E7CE] text-[#0A0A0A]"
-                                    : "text-white/50 hover:text-white hover:bg-white/5"
-                            )}
-                        >
-                            <item.icon size={18} strokeWidth={isActive ? 2 : 1.5} />
+                <Link
+                    href="/board"
+                    className={`flex flex-col items-center gap-1 w-16 group ${getIconColor('/board')}`}
+                >
+                    <Icon name="dashboard" className="text-2xl transition-all" filled={isActive('/board')} />
+                    <span className="text-[10px] font-medium mt-1">Board</span>
+                </Link>
 
-                            {/* Unread Badge */}
-                            {item.badge > 0 && !isActive && (
-                                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
-                                    {item.badge > 9 ? '9+' : item.badge}
-                                </span>
-                            )}
+                <Link
+                    href="/chat"
+                    className={`flex flex-col items-center gap-1 w-16 group ${getIconColor('/chat')}`}
+                >
+                    <div className="relative">
+                        <Icon name="chat_bubble" className="text-2xl transition-all" filled={isActive('/chat')} />
+                        {/* Keeping the notification dot static for now, can be dynamic later */}
+                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-background-dark"></span>
+                    </div>
+                    <span className="text-[10px] font-medium mt-1">Chats</span>
+                </Link>
 
-                            {isActive && (
-                                <motion.span
-                                    initial={{ width: 0, opacity: 0 }}
-                                    animate={{ width: 'auto', opacity: 1 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="text-[13px] font-semibold tracking-tight overflow-hidden whitespace-nowrap"
-                                >
-                                    {item.label}
-                                </motion.span>
-                            )}
-                        </Link>
-                    );
-                })}
+                <Link
+                    href="/profile"
+                    className={`flex flex-col items-center gap-1 w-16 group ${getIconColor('/profile')}`}
+                >
+                    <Icon name="person" className="text-2xl transition-all" filled={isActive('/profile')} />
+                    <span className="text-[10px] font-medium mt-1">Profile</span>
+                </Link>
             </div>
-        </motion.nav>
+        </nav>
     );
-}
-
+};

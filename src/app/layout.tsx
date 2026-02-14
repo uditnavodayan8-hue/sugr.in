@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={clsx(inter.className, playfair.variable, "bg-background text-foreground min-h-screen antialiased font-sans")}>
-        <ClerkProvider>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/">
           <PanicProvider>
             <AuthProvider>
               <SugrProvider>
