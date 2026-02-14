@@ -104,94 +104,97 @@ export default function DiscoveryPage() {
                 </button>
             </header>
 
-            <main className="flex-1 relative flex flex-col justify-center items-center px-4 pt-4 pb-20 w-full">
-                {/* Background Cards for stack effect */}
-                <div className="absolute w-[85%] h-[65%] bg-surface-dark rounded-3xl opacity-40 transform scale-90 translate-y-12 shadow-xl border border-white/5 z-0 top-[15%]"></div>
-                <div className="absolute w-[90%] h-[68%] bg-surface-dark rounded-3xl opacity-60 transform scale-95 translate-y-6 shadow-xl border border-white/5 z-10 top-[12%]"></div>
+            <main className="flex-1 relative flex flex-col justify-center items-center w-full h-full overflow-hidden">
+                <div className="w-full max-w-md flex flex-col items-center justify-center px-4 pt-20 pb-24 h-full relative">
 
-                {/* Main Card */}
-                <div
-                    onClick={() => handleNavigate('/profile/1')} // Example profile ID
-                    className="relative w-full aspect-[3/4] max-h-[70vh] z-20 group cursor-pointer rounded-3xl p-[1px] bg-gradient-to-br from-[#bf953f] via-[#fcf6ba] to-[#aa771c] shadow-[0_0_30px_rgba(191,149,63,0.15)]"
-                >
-                    <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
-                        <img
-                            src="https://images.unsplash.com/photo-1542596594-649edbc13630?q=80&w=1000&auto=format&fit=crop"
-                            alt="Anastasia"
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/90"></div>
+                    {/* Background Cards for stack effect - positioned relative into the container */}
+                    <div className="absolute w-[80%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-40 transform scale-90 translate-y-12 shadow-xl border border-white/5 z-0"></div>
+                    <div className="absolute w-[85%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-60 transform scale-95 translate-y-6 shadow-xl border border-white/5 z-10"></div>
 
-                        <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                            <div className="flex gap-1">
-                                <span className="h-1 w-8 bg-white/90 rounded-full shadow-lg"></span>
-                                <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
-                                <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
-                            </div>
-                            <div className="px-3 py-1 glass-panel rounded-full flex items-center gap-1 border border-primary/20 shadow-lg">
-                                <Icon name="verified" className="text-primary text-[14px]" />
-                                <span className="text-[10px] font-bold tracking-wider uppercase text-primary">Gold</span>
-                            </div>
-                        </div>
+                    {/* Main Card */}
+                    <div
+                        onClick={() => handleNavigate('/profile/1')} // Example profile ID
+                        className="relative w-full aspect-[3/4] max-h-[60vh] z-20 group cursor-pointer rounded-3xl p-[1px] bg-gradient-to-br from-[#bf953f] via-[#fcf6ba] to-[#aa771c] shadow-[0_0_30px_rgba(191,149,63,0.15)]"
+                    >
+                        <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
+                            <img
+                                src="https://images.unsplash.com/photo-1542596594-649edbc13630?q=80&w=1000&auto=format&fit=crop"
+                                alt="Anastasia"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/90"></div>
 
-                        <div className="absolute bottom-0 left-0 right-0 glass-panel border-t-0 border-x-0 border-b-0 backdrop-blur-xl rounded-b-3xl">
-                            <div className="px-5 pt-5 pb-5">
-                                <div className="flex justify-between items-end mb-2">
-                                    <div>
-                                        <div className="flex items-baseline gap-2">
-                                            <h2 className="text-3xl font-bold text-white drop-shadow-md font-serif tracking-wide">Anastasia</h2>
-                                            <span className="text-xl font-normal text-gray-200 font-serif">24</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 mt-1.5">
-                                            <div className="flex items-center gap-1 text-gold-light/80">
-                                                <Icon name="location_on" className="text-sm" />
-                                                <span className="text-sm font-serif italic tracking-wide">Bandra, 2km</span>
-                                            </div>
-                                            <div className="w-px h-3 bg-white/20"></div>
-                                            <div className="flex items-center gap-1 text-gold-light/80">
-                                                <Icon name="auto_awesome" className="text-sm" />
-                                                <span className="text-sm font-serif italic tracking-wide">94% Match</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="px-3 py-1.5 rounded-lg bg-black/40 border border-primary/30 backdrop-blur-md">
-                                        <span className="text-xs font-semibold text-primary uppercase tracking-wide">Muse</span>
-                                    </div>
+                            <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
+                                <div className="flex gap-1">
+                                    <span className="h-1 w-8 bg-white/90 rounded-full shadow-lg"></span>
+                                    <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
+                                    <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
                                 </div>
+                                <div className="px-3 py-1 glass-panel rounded-full flex items-center gap-1 border border-primary/20 shadow-lg">
+                                    <Icon name="verified" className="text-primary text-[14px]" />
+                                    <span className="text-[10px] font-bold tracking-wider uppercase text-primary">Gold</span>
+                                </div>
+                            </div>
 
-                                <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3"></div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {["Travel", "Dining", "Luxury"].map(tag => (
-                                        <div key={tag} className="px-3 py-1.5 rounded-full bg-black/30 border border-white/5 flex items-center gap-1.5">
-                                            <Icon name={tag === "Travel" ? "flight" : tag === "Dining" ? "wine_bar" : "payments"} className="text-primary text-sm" />
-                                            <span className="text-xs font-medium text-gray-200">{tag}</span>
+                            <div className="absolute bottom-0 left-0 right-0 glass-panel border-t-0 border-x-0 border-b-0 backdrop-blur-xl rounded-b-3xl">
+                                <div className="px-5 pt-5 pb-5">
+                                    <div className="flex justify-between items-end mb-2">
+                                        <div>
+                                            <div className="flex items-baseline gap-2">
+                                                <h2 className="text-3xl font-bold text-white drop-shadow-md font-serif tracking-wide">Anastasia</h2>
+                                                <span className="text-xl font-normal text-gray-200 font-serif">24</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 mt-1.5">
+                                                <div className="flex items-center gap-1 text-gold-light/80">
+                                                    <Icon name="location_on" className="text-sm" />
+                                                    <span className="text-sm font-serif italic tracking-wide">Bandra, 2km</span>
+                                                </div>
+                                                <div className="w-px h-3 bg-white/20"></div>
+                                                <div className="flex items-center gap-1 text-gold-light/80">
+                                                    <Icon name="auto_awesome" className="text-sm" />
+                                                    <span className="text-sm font-serif italic tracking-wide">94% Match</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    ))}
+                                        <div className="px-3 py-1.5 rounded-lg bg-black/40 border border-primary/30 backdrop-blur-md">
+                                            <span className="text-xs font-semibold text-primary uppercase tracking-wide">Muse</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3"></div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        {["Travel", "Dining", "Luxury"].map(tag => (
+                                            <div key={tag} className="px-3 py-1.5 rounded-full bg-black/30 border border-white/5 flex items-center gap-1.5">
+                                                <Icon name={tag === "Travel" ? "flight" : tag === "Dining" ? "wine_bar" : "payments"} className="text-primary text-sm" />
+                                                <span className="text-xs font-medium text-gray-200">{tag}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="absolute -bottom-8 left-0 right-0 flex justify-center items-center gap-8 z-30 pb-24">
-                    <button className="w-16 h-16 rounded-full bg-matte-black border border-white/5 shadow-lg flex items-center justify-center group active:scale-95 transition-all">
-                        <Icon name="close" className="text-3xl text-gray-400 group-hover:text-white transition-colors" />
-                    </button>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            console.log("Navigating to match..."); // Debug
-                            handleNavigate('/match');
-                        }}
-                        className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center transform -translate-y-6 group active:scale-95 transition-all border-2 border-white/20"
-                    >
-                        <Icon name="star" className="text-3xl text-white drop-shadow-md" />
-                    </button>
-                    <button className="w-16 h-16 rounded-full bg-primary/10 border border-primary/50 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center group active:scale-95 transition-all backdrop-blur-sm">
-                        <Icon name="favorite" className="text-3xl text-primary drop-shadow-[0_0_8px_rgba(242,204,13,0.8)]" filled />
-                    </button>
+                    {/* Action Buttons - In Flow */}
+                    <div className="mt-8 flex justify-center items-center gap-8 z-30">
+                        <button className="w-16 h-16 rounded-full bg-matte-black border border-white/5 shadow-lg flex items-center justify-center group active:scale-95 transition-all">
+                            <Icon name="close" className="text-3xl text-gray-400 group-hover:text-white transition-colors" />
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                console.log("Navigating to match..."); // Debug
+                                handleNavigate('/match');
+                            }}
+                            className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center transform -translate-y-2 group active:scale-95 transition-all border-2 border-white/20"
+                        >
+                            <Icon name="star" className="text-3xl text-white drop-shadow-md" />
+                        </button>
+                        <button className="w-16 h-16 rounded-full bg-primary/10 border border-primary/50 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center group active:scale-95 transition-all backdrop-blur-sm">
+                            <Icon name="favorite" className="text-3xl text-primary drop-shadow-[0_0_8px_rgba(242,204,13,0.8)]" filled />
+                        </button>
+                    </div>
                 </div>
             </main>
         </div>
