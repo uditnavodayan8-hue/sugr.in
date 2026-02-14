@@ -23,7 +23,7 @@ export default function BottomNav() {
     };
 
     return (
-        <nav className="fixed bottom-0 w-full bg-surface-dark/95 backdrop-blur-xl border-t border-white/5 pb-4 pt-2 z-50">
+        <nav className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-surface-dark/95 backdrop-blur-xl border-t border-white/5 pb-4 pt-2 z-50">
             <div className="flex justify-around items-center px-2 h-16">
                 <Link
                     href="/discovery"

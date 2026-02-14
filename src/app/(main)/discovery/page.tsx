@@ -104,15 +104,15 @@ export default function DiscoveryPage() {
                 </button>
             </header>
 
-            <main className="flex-1 relative flex flex-col justify-center items-center px-4 pt-16 pb-20">
+            <main className="flex-1 relative flex flex-col justify-center items-center px-4 pt-4 pb-20 w-full">
                 {/* Background Cards for stack effect */}
-                <div className="absolute w-[90%] h-[75%] bg-surface-dark rounded-3xl opacity-40 transform scale-95 translate-y-8 shadow-xl border border-white/5 z-0"></div>
-                <div className="absolute w-[95%] h-[75%] bg-surface-dark rounded-3xl opacity-60 transform scale-[0.97] translate-y-4 shadow-xl border border-white/5 z-10"></div>
+                <div className="absolute w-[85%] h-[65%] bg-surface-dark rounded-3xl opacity-40 transform scale-90 translate-y-12 shadow-xl border border-white/5 z-0 top-[15%]"></div>
+                <div className="absolute w-[90%] h-[68%] bg-surface-dark rounded-3xl opacity-60 transform scale-95 translate-y-6 shadow-xl border border-white/5 z-10 top-[12%]"></div>
 
                 {/* Main Card */}
                 <div
                     onClick={() => handleNavigate('/profile/1')} // Example profile ID
-                    className="relative w-full h-[75%] z-20 group cursor-pointer rounded-3xl p-[1px] bg-gradient-to-br from-[#bf953f] via-[#fcf6ba] to-[#aa771c] shadow-[0_0_30px_rgba(191,149,63,0.15)]"
+                    className="relative w-full aspect-[3/4] max-h-[70vh] z-20 group cursor-pointer rounded-3xl p-[1px] bg-gradient-to-br from-[#bf953f] via-[#fcf6ba] to-[#aa771c] shadow-[0_0_30px_rgba(191,149,63,0.15)]"
                 >
                     <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
                         <img
