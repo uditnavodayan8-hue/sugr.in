@@ -46,6 +46,9 @@ export default function Step3_Photos({ onBack, onComplete, loading }: Step3_Phot
 
             if (result.success && result.publicUrl) {
                 onComplete(result.publicUrl);
+            } else {
+                toast.error('Upload failed', { description: result.error || 'Unknown error' });
+                setUploading(false);
             }
         } catch (error: any) {
             console.error('Upload error:', error);

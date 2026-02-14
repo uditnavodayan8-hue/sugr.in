@@ -20,26 +20,30 @@ export async function updateProfile(data: {
 
     const supabase = createAdminClient();
 
-    const { error } = await supabase
-        .from('profiles')
-        .update({
-            role: data.role,
-            username: data.username,
-            lifestyle_tier: data.lifestyle_tier,
-            bio: data.bio,
-            name: data.name,
-            age: data.age,
-            city: data.city,
-            // Ensure onboarding is marked complete if needed (usually presence of role does this)
-        })
-        .eq('id', userId);
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                role: data.role,
+                username: data.username,
+                lifestyle_tier: data.lifestyle_tier,
+                bio: data.bio,
+                name: data.name,
+                age: data.age,
+                city: data.city,
+            })
+            .eq('id', userId);
 
-    if (error) {
-        throw new Error(error.message);
+        if (error) {
+            console.error('Update Profile Error:', error);
+            return { success: false, error: error.message };
+        }
+
+        revalidatePath('/dashboard');
+        revalidatePath('/profile');
+        return { success: true };
+    } catch (err: any) {
+        console.error('Unexpected Update Profile Error:', err);
+        return { success: false, error: err.message || 'Unknown error' };
     }
-
-    revalidatePath('/dashboard');
-    revalidatePath('/profile');
-
-    return { success: true };
 }

@@ -43,7 +43,8 @@ export default function OnboardingForm() {
         setLoading(true);
         try {
             // Final Submission
-            await updateProfile({
+            // Final Submission
+            const result = await updateProfile({
                 role: formData.role as string,
                 username: formData.username,
                 lifestyle_tier: formData.tier,
@@ -53,9 +54,14 @@ export default function OnboardingForm() {
                 city: formData.city,
             });
 
-            // Redirect
-            router.push('/dashboard');
+            if (result.success) {
+                router.push('/dashboard');
+            } else {
+                toast.error('Failed to create profile', { description: result.error || 'Please try again' });
+                setLoading(false);
+            }
         } catch (error: any) {
+            console.error('Profile update error:', error);
             toast.error('Failed to create profile', { description: error.message });
             setLoading(false);
         }
