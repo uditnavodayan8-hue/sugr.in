@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 
@@ -16,10 +18,10 @@ export interface Message {
  * Get messages for a specific match
  */
 export async function getMessages(matchId: string): Promise<Message[]> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) return [];
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // First verify user is part of this match
     const { data: match } = await supabase
@@ -58,14 +60,14 @@ export async function sendMessage(
     mediaUrl?: string,
     isOneTimeView: boolean = false
 ): Promise<Message | null> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
     if (!content && !mediaUrl) {
         throw new Error('Message must have content or media');
     }
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Verify user is part of this match
     const { data: match } = await supabase
@@ -105,10 +107,10 @@ export async function sendMessage(
  * Mark message as viewed (for one-time view messages)
  */
 export async function markMessageViewed(messageId: string): Promise<void> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) return;
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     await supabase
         .from('messages')
@@ -118,31 +120,60 @@ export async function markMessageViewed(messageId: string): Promise<void> {
 }
 
 /**
- * Subscribe to new messages in a match (for real-time updates)
+ * Get all chats (matches with last message)
  */
-export function subscribeToMessages(
-    matchId: string,
-    callback: (message: Message) => void
-) {
-    const supabase = createClient();
+export async function getChats() {
+    const { userId } = await auth();
+    if (!userId) return [];
 
-    const channel = supabase
-        .channel(`messages:${matchId}`)
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'messages',
-                filter: `match_id=eq.${matchId}`,
-            },
-            (payload) => {
-                callback(payload.new as Message);
-            }
-        )
-        .subscribe();
+    const supabase = await createClient();
 
-    return () => {
-        supabase.removeChannel(channel);
-    };
+    // Fetch matches with profiles
+    const { data: matches, error } = await supabase
+        .from('matches')
+        .select(`
+            *,
+            user_a_profile:profiles!matches_user_a_fkey(*),
+            user_b_profile:profiles!matches_user_b_fkey(*),
+            messages:messages(content, created_at, sender_id, viewed_at)
+        `)
+        .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching chats:', error);
+        return [];
+    }
+
+    // Process matches to format for chat list
+    const chats = matches.map(match => {
+        // Determine the other user
+        const otherUser = match.user_a === userId ? match.user_b_profile : match.user_a_profile;
+
+        // Find last message (Supabase returns array even if we limit, but here we fetched all. optimization needed for prod)
+        // Actually, let's sort messages in JS since we fetched them. 
+        // Ideally we use .limit(1) in the join but Supabase join limits are tricky with multiple rows.
+        // For MVP, handling in JS is acceptable.
+
+        // The messages array from the join:
+        // Note: 'messages' property might be an array or object depending on relationship. It's One-to-Many, so array.
+        const msgs = (match.messages as any[]) || [];
+        msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const lastMsg = msgs[0];
+
+        return {
+            id: match.id,
+            partnerId: otherUser.id,
+            name: otherUser.name || 'User',
+            avatar: otherUser.avatar_url,
+            lastMessage: lastMsg?.content || 'New Match!',
+            time: lastMsg ? lastMsg.created_at : match.created_at,
+            unread: lastMsg && lastMsg.sender_id !== userId && !lastMsg.viewed_at,
+            online: false // TODO: Real-time presence
+        };
+    });
+
+    return chats.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 }
+

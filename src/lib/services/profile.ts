@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 
@@ -28,10 +30,10 @@ export interface Profile extends ProfileData {
  * Get current user's profile
  */
 export async function getProfile(): Promise<Profile | null> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) return null;
 
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -50,10 +52,10 @@ export async function getProfile(): Promise<Profile | null> {
  * Create or update user profile
  */
 export async function upsertProfile(profileData: ProfileData): Promise<Profile | null> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('profiles')
@@ -77,10 +79,10 @@ export async function upsertProfile(profileData: ProfileData): Promise<Profile |
  * Update specific profile fields
  */
 export async function updateProfile(updates: Partial<ProfileData>): Promise<Profile | null> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('profiles')
@@ -101,7 +103,7 @@ export async function updateProfile(updates: Partial<ProfileData>): Promise<Prof
  * Upload profile photo to Supabase Storage
  */
 export async function uploadProfilePhoto(file: File, userId: string): Promise<string | null> {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Generate unique filename
     const fileExt = file.name.split('.').pop();
@@ -156,7 +158,7 @@ export function calculateSugrIndex(profile: ProfileData): number {
  * Get profile by ID (for viewing other users)
  */
 export async function getProfileById(profileId: string): Promise<Profile | null> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from('profiles')
         .select('*')

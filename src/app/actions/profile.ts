@@ -27,8 +27,7 @@ export async function updateProfile(data: {
             username: data.username,
             lifestyle_tier: data.lifestyle_tier,
             bio: data.bio,
-            name: data.name, // Mapping to full_name or name depending on schema
-            full_name: data.name, // Assuming full_name is the column
+            name: data.name,
             age: data.age,
             city: data.city,
             // Ensure onboarding is marked complete if needed (usually presence of role does this)

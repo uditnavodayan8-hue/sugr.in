@@ -1,11 +1,25 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
+import { getDiscoveryFeed, createSwipe, type DiscoveryFilters } from '@/lib/services/discovery';
+import { type Profile } from '@/lib/services/profile';
+import { toast } from 'sonner';
 
 // --- Filters View ---
-const FiltersView: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+const FiltersView: React.FC<{
+    filters: DiscoveryFilters;
+    onApply: (newFilters: DiscoveryFilters) => void;
+    onClose: () => void;
+}> = ({ filters, onApply, onClose }) => {
+    const [localFilters, setLocalFilters] = useState<DiscoveryFilters>(filters);
+
+    const handleApply = () => {
+        onApply(localFilters);
+        onClose();
+    };
+
     return (
         <div className="fixed inset-0 z-50 bg-background-dark flex flex-col">
             <header className="px-6 py-4 flex items-center justify-between sticky top-0 z-10 bg-background-dark/80 backdrop-blur-md border-b border-white/5">
@@ -13,28 +27,38 @@ const FiltersView: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     <Icon name="close" className="text-white" />
                 </button>
                 <h1 className="text-lg font-bold tracking-wide">Filters</h1>
-                <button className="text-sm font-medium text-primary">Reset</button>
+                <button
+                    onClick={() => setLocalFilters({})}
+                    className="text-sm font-medium text-primary"
+                >
+                    Reset
+                </button>
             </header>
 
             <main className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
                 <section className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/80">Demographics</h2>
-                        <span className="text-lg font-medium text-white">24 - 45</span>
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/80">Age Range</h2>
+                        <span className="text-lg font-medium text-white">
+                            {localFilters.ageMin || 18} - {localFilters.ageMax || 65}
+                        </span>
                     </div>
-                    <input type="range" className="w-full accent-primary h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
-                    <p className="text-xs text-gray-400">Search for profiles within this age range.</p>
-                </section>
-
-                <section className="space-y-4">
-                    <div className="flex justify-between items-end">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/80">Lifestyle Expectation</h2>
-                        <span className="text-lg font-medium text-white">$2k - $8k+</span>
-                    </div>
-                    <input type="range" className="w-full accent-primary h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
-                    <div className="flex justify-between text-xs text-gray-500 font-medium">
-                        <span>$1k</span>
-                        <span>$10k+</span>
+                    {/* Simplified range slider (using two inputs for now or a library later) */}
+                    <div className="flex gap-4">
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            className="bg-gray-800 text-white p-2 rounded w-full"
+                            value={localFilters.ageMin || ''}
+                            onChange={e => setLocalFilters({ ...localFilters, ageMin: parseInt(e.target.value) || undefined })}
+                        />
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            className="bg-gray-800 text-white p-2 rounded w-full"
+                            value={localFilters.ageMax || ''}
+                            onChange={e => setLocalFilters({ ...localFilters, ageMax: parseInt(e.target.value) || undefined })}
+                        />
                     </div>
                 </section>
 
@@ -45,27 +69,17 @@ const FiltersView: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         <span className="text-base font-medium text-white">Verified Profiles Only</span>
                         <span className="text-xs text-gray-400 mt-1">Show only users with ID verification</span>
                     </div>
-                    <div className="w-12 h-6 bg-primary rounded-full relative cursor-pointer">
-                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-md"></div>
-                    </div>
-                </section>
-
-                <div className="h-px w-full bg-white/5"></div>
-
-                <section className="space-y-4">
-                    <h2 className="text-sm font-semibold uppercase tracking-wider text-primary/80">Looking For</h2>
-                    <div className="flex flex-wrap gap-3">
-                        {["Mentorship", "Travel", "Networking", "Romance", "Discreet"].map((tag, i) => (
-                            <button key={tag} className={`px-4 py-2 rounded-full text-sm font-semibold transition-transform active:scale-95 ${i % 3 === 0 ? 'bg-primary text-black shadow-lg shadow-primary/20' : 'bg-white/5 text-gray-300 hover:bg-white/10'}`}>
-                                {tag}
-                            </button>
-                        ))}
+                    <div
+                        onClick={() => setLocalFilters({ ...localFilters, verifiedOnly: !localFilters.verifiedOnly })}
+                        className={`w-12 h-6 rounded-full relative cursor-pointer transition-colors ${localFilters.verifiedOnly ? 'bg-primary' : 'bg-gray-700'}`}
+                    >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform ${localFilters.verifiedOnly ? 'right-1' : 'left-1'}`}></div>
                     </div>
                 </section>
             </main>
 
             <div className="p-6 bg-gradient-to-t from-background-dark via-background-dark to-transparent z-20">
-                <button onClick={onClose} className="w-full bg-primary text-black font-bold py-4 px-6 rounded-lg shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+                <button onClick={handleApply} className="w-full bg-primary text-black font-bold py-4 px-6 rounded-lg shadow-xl shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
                     Apply Filters
                     <Icon name="arrow_forward" className="text-lg group-hover:translate-x-1 transition-transform" />
                 </button>
@@ -78,13 +92,90 @@ const FiltersView: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 export default function DiscoveryPage() {
     const router = useRouter();
     const [showFilters, setShowFilters] = useState(false);
+    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState<DiscoveryFilters>({});
 
-    // In the real app, utilize router.push('/match') or profile detail
+    useEffect(() => {
+        loadFeed();
+    }, [filters]);
+
+    const loadFeed = async () => {
+        setLoading(true);
+        try {
+            const data = await getDiscoveryFeed(filters);
+            setProfiles(data);
+            setCurrentIndex(0);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to load profiles');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSwipe = async (action: 'like' | 'pass' | 'superlike') => {
+        if (!profiles[currentIndex]) return;
+
+        const targetId = profiles[currentIndex].id;
+
+        // Optimistic update
+        const nextIndex = currentIndex + 1;
+        setCurrentIndex(nextIndex);
+
+        try {
+            const result = await createSwipe(targetId, action);
+
+            if (result.matched && result.matchId) {
+                toast.success("It's a Match!", {
+                    description: "You matched with " + profiles[currentIndex].name,
+                    action: {
+                        label: 'View',
+                        onClick: () => router.push(`/match`)
+                    }
+                });
+            }
+        } catch (error) {
+            console.error(error);
+            // Optionally revert index if failed, but usually better to just log and move on
+            toast.error('Failed to swipe');
+        }
+    };
+
     const handleNavigate = (path: string) => {
         router.push(path);
     };
 
-    if (showFilters) return <FiltersView onClose={() => setShowFilters(false)} />;
+    const currentProfile = profiles[currentIndex];
+
+    if (showFilters) return <FiltersView filters={filters} onApply={setFilters} onClose={() => setShowFilters(false)} />;
+
+    if (loading) {
+        return (
+            <div className="h-screen w-full bg-background-dark flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    if (!currentProfile) {
+        return (
+            <div className="h-screen w-full bg-background-dark flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-20 h-20 bg-surface-dark rounded-full flex items-center justify-center mb-6 animate-pulse">
+                    <Icon name="search" className="text-4xl text-gray-500" />
+                </div>
+                <h2 className="text-xl font-bold text-white mb-2">No more profiles</h2>
+                <p className="text-gray-400 mb-8">Adjust your filters to see more people.</p>
+                <button
+                    onClick={() => setShowFilters(true)}
+                    className="bg-primary text-black px-8 py-3 rounded-full font-bold"
+                >
+                    Adjust Filters
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="relative h-screen w-full bg-background-dark flex flex-col overflow-hidden">
@@ -107,33 +198,38 @@ export default function DiscoveryPage() {
             <main className="flex-1 relative flex flex-col justify-center items-center w-full h-full overflow-hidden">
                 <div className="w-full max-w-md flex flex-col items-center justify-center px-4 pt-20 pb-24 h-full relative">
 
-                    {/* Background Cards for stack effect - positioned relative into the container */}
-                    <div className="absolute w-[80%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-40 transform scale-90 translate-y-12 shadow-xl border border-white/5 z-0"></div>
-                    <div className="absolute w-[85%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-60 transform scale-95 translate-y-6 shadow-xl border border-white/5 z-10"></div>
+                    {/* Background Cards for stack effect */}
+                    {profiles[currentIndex + 1] && (
+                        <div className="absolute w-[80%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-40 transform scale-90 translate-y-12 shadow-xl border border-white/5 z-0"></div>
+                    )}
+                    {profiles[currentIndex + 1] && (
+                        <div className="absolute w-[85%] aspect-[3/4] max-h-[60vh] bg-surface-dark rounded-3xl opacity-60 transform scale-95 translate-y-6 shadow-xl border border-white/5 z-10"></div>
+                    )}
 
                     {/* Main Card */}
                     <div
-                        onClick={() => handleNavigate('/profile/1')} // Example profile ID
+                        onClick={() => handleNavigate(`/profile/${currentProfile.id}`)}
                         className="relative w-full aspect-[3/4] max-h-[60vh] z-20 group cursor-pointer rounded-3xl p-[1px] bg-gradient-to-br from-[#bf953f] via-[#fcf6ba] to-[#aa771c] shadow-[0_0_30px_rgba(191,149,63,0.15)]"
                     >
                         <div className="relative w-full h-full rounded-3xl overflow-hidden bg-black">
                             <img
-                                src="https://images.unsplash.com/photo-1542596594-649edbc13630?q=80&w=1000&auto=format&fit=crop"
-                                alt="Anastasia"
+                                src={currentProfile.avatar_url || "https://images.unsplash.com/photo-1542596594-649edbc13630?q=80&w=1000&auto=format&fit=crop"}
+                                alt={currentProfile.name || 'User'}
                                 className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/90"></div>
 
                             <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
                                 <div className="flex gap-1">
+                                    {/* Story indicators - placeholder for now */}
                                     <span className="h-1 w-8 bg-white/90 rounded-full shadow-lg"></span>
-                                    <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
-                                    <span className="h-1 w-8 bg-white/30 rounded-full shadow-lg"></span>
                                 </div>
-                                <div className="px-3 py-1 glass-panel rounded-full flex items-center gap-1 border border-primary/20 shadow-lg">
-                                    <Icon name="verified" className="text-primary text-[14px]" />
-                                    <span className="text-[10px] font-bold tracking-wider uppercase text-primary">Gold</span>
-                                </div>
+                                {currentProfile.lifestyle_tier && (
+                                    <div className="px-3 py-1 glass-panel rounded-full flex items-center gap-1 border border-primary/20 shadow-lg">
+                                        <Icon name="verified" className="text-primary text-[14px]" />
+                                        <span className="text-[10px] font-bold tracking-wider uppercase text-primary">{currentProfile.lifestyle_tier}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="absolute bottom-0 left-0 right-0 glass-panel border-t-0 border-x-0 border-b-0 backdrop-blur-xl rounded-b-3xl">
@@ -141,32 +237,32 @@ export default function DiscoveryPage() {
                                     <div className="flex justify-between items-end mb-2">
                                         <div>
                                             <div className="flex items-baseline gap-2">
-                                                <h2 className="text-3xl font-bold text-white drop-shadow-md font-serif tracking-wide">Anastasia</h2>
-                                                <span className="text-xl font-normal text-gray-200 font-serif">24</span>
+                                                <h2 className="text-3xl font-bold text-white drop-shadow-md font-serif tracking-wide">{currentProfile.name}</h2>
+                                                <span className="text-xl font-normal text-gray-200 font-serif">{currentProfile.age}</span>
                                             </div>
                                             <div className="flex items-center gap-3 mt-1.5">
                                                 <div className="flex items-center gap-1 text-gold-light/80">
                                                     <Icon name="location_on" className="text-sm" />
-                                                    <span className="text-sm font-serif italic tracking-wide">Bandra, 2km</span>
+                                                    <span className="text-sm font-serif italic tracking-wide">{currentProfile.city || 'Unknown Location'}</span>
                                                 </div>
                                                 <div className="w-px h-3 bg-white/20"></div>
                                                 <div className="flex items-center gap-1 text-gold-light/80">
                                                     <Icon name="auto_awesome" className="text-sm" />
-                                                    <span className="text-sm font-serif italic tracking-wide">94% Match</span>
+                                                    <span className="text-sm font-serif italic tracking-wide">{currentProfile.sugr_index || 85}% Match</span>
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="px-3 py-1.5 rounded-lg bg-black/40 border border-primary/30 backdrop-blur-md">
-                                            <span className="text-xs font-semibold text-primary uppercase tracking-wide">Muse</span>
+                                            <span className="text-xs font-semibold text-primary uppercase tracking-wide">{currentProfile.role}</span>
                                         </div>
                                     </div>
 
                                     <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent my-3"></div>
 
                                     <div className="flex flex-wrap gap-2">
-                                        {["Travel", "Dining", "Luxury"].map(tag => (
+                                        {(currentProfile.interests || ["Travel", "Dining"]).slice(0, 3).map(tag => (
                                             <div key={tag} className="px-3 py-1.5 rounded-full bg-black/30 border border-white/5 flex items-center gap-1.5">
-                                                <Icon name={tag === "Travel" ? "flight" : tag === "Dining" ? "wine_bar" : "payments"} className="text-primary text-sm" />
+                                                <Icon name="local_activity" className="text-primary text-sm" />
                                                 <span className="text-xs font-medium text-gray-200">{tag}</span>
                                             </div>
                                         ))}
@@ -178,20 +274,25 @@ export default function DiscoveryPage() {
 
                     {/* Action Buttons - In Flow */}
                     <div className="mt-8 flex justify-center items-center gap-8 z-30">
-                        <button className="w-16 h-16 rounded-full bg-matte-black border border-white/5 shadow-lg flex items-center justify-center group active:scale-95 transition-all">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleSwipe('pass'); }}
+                            className="w-16 h-16 rounded-full bg-matte-black border border-white/5 shadow-lg flex items-center justify-center group active:scale-95 transition-all"
+                        >
                             <Icon name="close" className="text-3xl text-gray-400 group-hover:text-white transition-colors" />
                         </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                console.log("Navigating to match..."); // Debug
-                                handleNavigate('/match');
+                                handleSwipe('superlike');
                             }}
                             className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center transform -translate-y-2 group active:scale-95 transition-all border-2 border-white/20"
                         >
                             <Icon name="star" className="text-3xl text-white drop-shadow-md" />
                         </button>
-                        <button className="w-16 h-16 rounded-full bg-primary/10 border border-primary/50 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center group active:scale-95 transition-all backdrop-blur-sm">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleSwipe('like'); }}
+                            className="w-16 h-16 rounded-full bg-primary/10 border border-primary/50 shadow-[0_0_20px_rgba(242,204,13,0.4)] flex items-center justify-center group active:scale-95 transition-all backdrop-blur-sm"
+                        >
                             <Icon name="favorite" className="text-3xl text-primary drop-shadow-[0_0_8px_rgba(242,204,13,0.8)]" filled />
                         </button>
                     </div>

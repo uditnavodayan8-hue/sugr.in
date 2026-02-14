@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 import type { Profile } from './profile';
@@ -19,10 +21,10 @@ export async function getDiscoveryFeed(
     filters: DiscoveryFilters = {},
     limit: number = 20
 ): Promise<Profile[]> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) return [];
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Get user's own profile to check their role
     const { data: userProfile } = await supabase
@@ -94,10 +96,10 @@ export async function createSwipe(
     targetId: string,
     action: 'like' | 'pass' | 'superlike'
 ): Promise<{ matched: boolean; matchId?: string }> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Insert the swipe
     const { error: swipeError } = await supabase
@@ -150,10 +152,10 @@ export async function createSwipe(
  * Get user's matches
  */
 export async function getMatches(): Promise<any[]> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) return [];
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('matches')
@@ -182,7 +184,7 @@ export async function getMatches(): Promise<any[]> {
  * Check if two users have matched
  */
 export async function checkMatch(userId1: string, userId2: string): Promise<boolean> {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data } = await supabase
         .from('matches')

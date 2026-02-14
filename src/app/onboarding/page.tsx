@@ -38,7 +38,7 @@ export default function OnboardingPage() {
                             <div className="w-1.5 h-1.5 bg-white/20 rounded-full"></div>
                         </div>
                         <button
-                            onClick={() => router.push('/role-selection')}
+                            onClick={() => router.push('/setup')}
                             className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-black hover:bg-white transition-colors shadow-[0_4px_14px_rgba(242,204,13,0.4)]"
                         >
                             <Icon name="arrow_forward" />

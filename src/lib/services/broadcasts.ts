@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from '@/lib/supabase/server';
 import { auth } from '@clerk/nextjs/server';
 
@@ -18,10 +20,10 @@ export interface Broadcast {
  * Create a broadcast post
  */
 export async function createBroadcast(content: string): Promise<Broadcast | null> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('broadcasts')
@@ -44,7 +46,7 @@ export async function createBroadcast(content: string): Promise<Broadcast | null
  * Get broadcast feed (all users)
  */
 export async function getBroadcastFeed(limit: number = 50): Promise<Broadcast[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from('broadcasts')
@@ -67,10 +69,10 @@ export async function getBroadcastFeed(limit: number = 50): Promise<Broadcast[]>
  * Delete a broadcast
  */
 export async function deleteBroadcast(broadcastId: string): Promise<void> {
-    const { userId } = auth();
+    const { userId } = await auth();
     if (!userId) throw new Error('Not authenticated');
 
-    const supabase = createClient();
+    const supabase = await createClient();
 
     const { error } = await supabase
         .from('broadcasts')
@@ -82,30 +84,4 @@ export async function deleteBroadcast(broadcastId: string): Promise<void> {
         console.error('Error deleting broadcast:', error);
         throw error;
     }
-}
-
-/**
- * Subscribe to new broadcasts (real-time)
- */
-export function subscribeToBroadcasts(callback: (broadcast: Broadcast) => void) {
-    const supabase = createClient();
-
-    const channel = supabase
-        .channel('broadcasts')
-        .on(
-            'postgres_changes',
-            {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'broadcasts',
-            },
-            (payload) => {
-                callback(payload.new as Broadcast);
-            }
-        )
-        .subscribe();
-
-    return () => {
-        supabase.removeChannel(channel);
-    };
 }

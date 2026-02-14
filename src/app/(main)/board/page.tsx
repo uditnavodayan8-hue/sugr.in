@@ -1,53 +1,114 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { getBroadcastFeed, type Broadcast } from '@/lib/services/broadcasts';
+import { subscribeToBroadcasts } from '@/lib/services/broadcasts.client';
+import { toast } from 'sonner';
 
-const BoardCard: React.FC<any> = ({ title, location, duration, desc, allowance, perks, img, isBlackCard }) => (
-    <article className={`bg-surface-dark rounded-xl p-5 border ${isBlackCard ? 'border-primary/30 shadow-[0_0_15px_rgba(242,204,13,0.1)]' : 'border-white/5'} relative`}>
-        {isBlackCard && (
-            <div className="absolute -top-3 right-5 bg-black text-primary px-3 py-1 rounded-sm border border-primary text-[10px] font-bold uppercase tracking-widest shadow-lg flex items-center gap-1">
-                <Icon name="workspace_premium" size={10} /> Black Card
+// Helper to format relative time
+function timeAgo(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+
+const BoardCard: React.FC<{ broadcast: Broadcast }> = ({ broadcast }) => {
+    // Mocking missing fields for now based on 'content' or random defaults
+    // In a real app, these would be columns in the DB
+    const isBlackCard = broadcast.profile?.lifestyle_tier === 'video_viral'; // Example condition
+    const location = "Nearby";
+    const isVerified = true;
+
+    return (
+        <article className={`bg-surface-dark rounded-xl p-5 border ${isBlackCard ? 'border-primary/30 shadow-[0_0_15px_rgba(242,204,13,0.1)]' : 'border-white/5'} relative`}>
+            {isBlackCard && (
+                <div className="absolute -top-3 right-5 bg-black text-primary px-3 py-1 rounded-sm border border-primary text-[10px] font-bold uppercase tracking-widest shadow-lg flex items-center gap-1">
+                    <Icon name="workspace_premium" className="text-[10px]" /> Black Card
+                </div>
+            )}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                    <Icon name="verified" className="text-primary text-sm" />
+                    <span className="text-xs text-primary font-bold uppercase tracking-wider">Verified {broadcast.profile?.lifestyle_tier || 'Member'}</span>
+                </div>
+                <span className="text-xs text-gray-400 font-medium">{timeAgo(broadcast.created_at)}</span>
             </div>
-        )}
-        <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                <Icon name="verified" className="text-primary text-sm" />
-                <span className="text-xs text-primary font-bold uppercase tracking-wider">Verified Benefactor</span>
-            </div>
-            <span className="text-xs text-gray-400 font-medium">2h ago</span>
-        </div>
-        <div className="flex items-start gap-4 mb-4">
-            <img src={img} className="w-14 h-14 rounded-full object-cover border-2 border-primary/50" alt={title} />
-            <div>
-                <h3 className="text-lg font-bold text-white leading-tight">{title}</h3>
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                    <span className="flex items-center gap-0.5"><Icon name="location_on" size={10} /> {location}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-                    <span>{duration}</span>
+            <div className="flex items-start gap-4 mb-4">
+                <img
+                    src={broadcast.profile?.avatar_url || "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&auto=format&fit=crop"}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-primary/50"
+                    alt={broadcast.profile?.name || 'User'}
+                />
+                <div>
+                    <h3 className="text-lg font-bold text-white leading-tight">{broadcast.profile?.name || 'Anonymous'}</h3>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                        <span className="flex items-center gap-0.5"><Icon name="location_on" className="text-[10px]" /> {location}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-        <p className="text-sm text-gray-300 leading-relaxed mb-5">{desc}</p>
-        <div className="flex items-center justify-between mb-6 p-3 bg-black/30 rounded-lg border border-white/5">
-            <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 uppercase font-semibold">Allowance</span>
-                <span className="text-lg font-bold text-primary">{allowance}</span>
+            <p className="text-sm text-gray-300 leading-relaxed mb-5">{broadcast.content}</p>
+
+            {/* Placeholder data for missing columns */}
+            <div className="flex items-center justify-between mb-6 p-3 bg-black/30 rounded-lg border border-white/5">
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">Allowance</span>
+                    <span className="text-lg font-bold text-primary">Negotiable</span>
+                </div>
+                <div className="h-8 w-px bg-white/10 mx-2"></div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400 uppercase font-semibold">Perks</span>
+                    <span className="text-xs font-medium text-white">Fine Dining</span>
+                </div>
             </div>
-            <div className="h-8 w-px bg-white/10 mx-2"></div>
-            <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 uppercase font-semibold">{isBlackCard ? "Transport" : "Perks"}</span>
-                <span className="text-xs font-medium text-white">{perks}</span>
+
+            <div className="flex gap-3">
+                <button className="flex-1 bg-primary hover:bg-primary-dim text-black font-bold py-3 px-4 rounded-md text-sm transition-colors">Request to Join</button>
+                <button className="aspect-square flex items-center justify-center border border-white/20 rounded-md hover:bg-white/5 text-gray-400"><Icon name="chat_bubble_outline" className="text-base" /></button>
             </div>
-        </div>
-        <div className="flex gap-3">
-            <button className="flex-1 bg-primary hover:bg-primary-dim text-black font-bold py-3 px-4 rounded-md text-sm transition-colors">Request to Join</button>
-            <button className="aspect-square flex items-center justify-center border border-white/20 rounded-md hover:bg-white/5 text-gray-400"><Icon name="chat_bubble_outline" /></button>
-        </div>
-    </article>
-);
+        </article>
+    );
+};
 
 export default function BoardPage() {
+    const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadData();
+
+        // Subscribe to real-time updates
+        const unsubscribe = subscribeToBroadcasts((newBroadcast) => {
+            // We need to fetch the profile for the new broadcast, or just add it with placeholder
+            // For simplicity, just reloading for now or prepending with partial data
+            setBroadcasts(prev => [newBroadcast, ...prev]);
+            toast.info('New post on the board!');
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+    const loadData = async () => {
+        try {
+            const data = await getBroadcastFeed();
+            setBroadcasts(data);
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to load board');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen w-full bg-background-dark flex flex-col">
             <header className="sticky top-0 z-40 bg-background-dark/95 backdrop-blur-md border-b border-white/5 pt-12 pb-4 px-6">
@@ -69,21 +130,18 @@ export default function BoardPage() {
             </header>
 
             <main className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6">
-                <BoardCard
-                    title="Weekend at The Leela"
-                    location="Delhi" duration="2 Days"
-                    desc="Seeking a charming companion for a relaxing weekend staycation. Fine dining at Le Cirque included."
-                    allowance="₹30,000" perks="Spa & Dining"
-                    img="https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=1000&auto=format&fit=crop"
-                />
-                <BoardCard
-                    title="Business Dinner Gala"
-                    location="Mumbai" duration="4 Hours"
-                    desc="Need a plus one for a high-profile industry awards night at The Oberoi. Elegant attire required."
-                    allowance="Generous Gift" perks="Uber Black"
-                    img="https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=1000&auto=format&fit=crop"
-                    isBlackCard
-                />
+                {loading ? (
+                    <div className="flex justify-center py-10">
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                ) : broadcasts.length > 0 ? (
+                    broadcasts.map(b => <BoardCard key={b.id} broadcast={b} />)
+                ) : (
+                    <div className="text-center py-10 text-gray-400">
+                        <p>No active broadcasts locally.</p>
+                        <p className="text-sm mt-2">Be the first to post!</p>
+                    </div>
+                )}
             </main>
             <button className="fixed bottom-24 right-6 w-14 h-14 bg-primary text-black rounded-full shadow-[0_0_15px_rgba(242,204,13,0.4)] flex items-center justify-center z-40 hover:scale-105 transition-transform">
                 <Icon name="add" className="text-2xl" />
