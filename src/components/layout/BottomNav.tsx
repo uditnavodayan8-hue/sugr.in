@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 
-export const BottomNav: React.FC = () => {
+export default function BottomNav() {
     const pathname = usePathname();
 
     const isActive = (path: string) => {
