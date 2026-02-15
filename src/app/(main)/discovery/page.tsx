@@ -18,6 +18,7 @@ interface Ad {
     created_at: string;
     user_id: string;
     profiles?: {
+        name: string;
         display_name: string;
         avatar_url: string;
         tier: string;
@@ -132,7 +133,7 @@ export default function DiscoveryPage() {
                     // Fetch full ad details including profile
                     const { data } = await supabase
                         .from('ads')
-                        .select('*, profiles(display_name, avatar_url, tier)')
+                        .select('*, profiles(name, display_name, avatar_url, tier)')
                         .eq('id', payload.new.id)
                         .single();
 
@@ -153,7 +154,7 @@ export default function DiscoveryPage() {
         // Simple geo-query placeholder - fetch all for now, filter later or rely on RLS/PostGIS if setup
         const { data, error } = await supabase
             .from('ads')
-            .select('*, profiles(display_name, avatar_url, tier)')
+            .select('*, profiles(name, display_name, avatar_url, tier)')
             .order('created_at', { ascending: false })
             .limit(10);
 
@@ -275,7 +276,7 @@ export default function DiscoveryPage() {
                                     )}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-baseline">
-                                            <span className="text-[#F7E7CE] font-serif text-sm truncate">{ad.profiles?.display_name || 'Anonymous'}</span>
+                                            <span className="text-[#F7E7CE] font-serif text-sm truncate">{ad.profiles?.display_name || ad.profiles?.name || 'Anonymous'}</span>
                                             <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{ad.profiles?.tier}</span>
                                         </div>
                                         <p className="text-white text-xs line-clamp-2">{ad.content}</p>
