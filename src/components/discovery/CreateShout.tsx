@@ -39,8 +39,9 @@ export default function CreateShout() {
 
             setMediaUrl(publicUrl);
         } catch (error) {
-            console.error(error);
-            toast.error("Upload failed");
+            console.error("Upload Error Details:", error);
+            // @ts-ignore
+            toast.error(`Upload failed: ${error.message || "Unknown error"}`);
         } finally {
             setUploading(false);
         }

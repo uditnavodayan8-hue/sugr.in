@@ -31,8 +31,8 @@ export async function createAd(formData: FormData) {
         })
 
     if (error) {
-        console.error("Create Ad Error:", error)
-        return { error: error.message }
+        console.error("Create Ad SQL Error:", JSON.stringify(error, null, 2))
+        return { error: `Database Error: ${error.message} (${error.code})` }
     }
 
     revalidatePath('/discovery')
