@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { useSugr } from '@/context/SugrContext';
+import { useAuth } from '@/context/AuthContext';
 
 const SettingsItem: React.FC<any> = ({ icon, title, subtitle, rightElement, onClick }) => (
     <button onClick={onClick} className="w-full flex items-center justify-between p-4 rounded-xl bg-surface-dark border border-white/5 hover:bg-white/5 transition-all group">
@@ -25,7 +26,8 @@ const SettingsItem: React.FC<any> = ({ icon, title, subtitle, rightElement, onCl
 
 export default function ProfilePage() {
     const router = useRouter();
-    const { profile, signOut } = useSugr();
+    const { profile } = useSugr();
+    const { signOut } = useAuth();
 
     if (!profile) {
         return (
