@@ -19,6 +19,7 @@ export interface Profile {
     location_lng?: number;
     dist_meters?: number; // Distance from current user (in meters)
     is_verified_provider: boolean;
+    is_verified?: boolean;
 
     verification_level: {
         phone: boolean;
