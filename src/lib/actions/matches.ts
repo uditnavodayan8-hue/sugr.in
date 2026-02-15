@@ -35,12 +35,26 @@ export async function createSwipe(targetId: string, action: 'like' | 'pass') {
             .single()
 
         if (reciprocal) {
-            // Create Match
-            await supabase.from('matches').insert({
-                user_a: user.id,
-                user_b: targetId
-            })
-            return { success: true, isMatch: true }
+            // Create Match (Sort IDs to ensure uniqueness)
+            // Convention: smaller ID is user_a
+            const userA = user.id < targetId ? user.id : targetId;
+            const userB = user.id < targetId ? targetId : user.id;
+
+            const { data: match, error: matchError } = await supabase
+                .from('matches')
+                .insert({
+                    user_a: userA,
+                    user_b: userB,
+                    status: 'active'
+                })
+                .select()
+                .single()
+
+            if (matchError) {
+                console.error('Match Creation Error:', matchError)
+            }
+
+            return { success: true, isMatch: true, matchId: match?.id }
         }
     }
 

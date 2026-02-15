@@ -9,10 +9,9 @@ export async function updateProfile(data: {
     username: string;
     lifestyle_tier: string;
     bio: string;
-    name: string;
-    age: number;
-    city: string;
     avatar_url?: string;
+    latitude?: number;
+    longitude?: number;
 }) {
     const { userId } = await auth();
     if (!userId) {
@@ -22,20 +21,29 @@ export async function updateProfile(data: {
     const supabase = createAdminClient();
 
     try {
+        const updateData: any = {
+            role: data.role,
+            username: data.username,
+            lifestyle_tier: data.lifestyle_tier,
+            bio: data.bio,
+            name: data.name,
+            age: data.age,
+            city: data.city,
+            avatar_url: data.avatar_url,
+            is_verified: false,
+        };
+
+        if (data.latitude && data.longitude) {
+            updateData.latitude = data.latitude;
+            updateData.longitude = data.longitude;
+            // PostGIS update (requires raw SQL or ensuring the column accepts string)
+            // Supabase JS client doesn't support PostGIS types directly in .update() easily without casting
+            // We'll rely on a trigger or just store lat/long for now as the RPC uses lat/long columns
+        }
+
         const { error } = await supabase
             .from('profiles')
-            .update({
-                role: data.role,
-                username: data.username,
-                lifestyle_tier: data.lifestyle_tier,
-                bio: data.bio,
-                name: data.name,
-                age: data.age,
-                city: data.city,
-                avatar_url: data.avatar_url,
-                is_verified: false, // Reset verification on update? Or keep as is.
-                // Assuming photos array might be needed later, but for now avatar_url is primary
-            })
+            .update(updateData)
             .eq('id', userId);
 
         if (error) {
