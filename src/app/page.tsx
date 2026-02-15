@@ -1,27 +1,43 @@
 import { redirect } from 'next/navigation';
-import { auth } from '@clerk/nextjs/server';
-import { createClient } from '@/lib/supabase/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export default async function Home() {
   const { userId } = await auth();
+  const user = await currentUser();
 
-  if (!userId) {
+  if (!userId || !user) {
     redirect('/welcome');
   }
 
-  // Check if profile is fully onboarded
-  const supabase = await createClient(); // Anon client is fine for reading profiles (public RLS)
-  const { data: profile } = await supabase
+  const supabase = createAdminClient();
+
+  // 1. Try to get profile
+  let { data: profile } = await supabase
     .from('profiles')
-    .select('role, age')
+    .select('*')
     .eq('id', userId)
     .single();
 
-  // Condition for "Onboarded":
-  // 1. Profile exists
-  // 2. Role is NOT 'explorer' (default)
-  // 3. Age is likely set (as a secondary check)
-  if (profile && profile.role !== 'explorer' && profile.age > 0) {
+  // 2. If missing, create it (Server-Side Sync)
+  if (!profile) {
+    const newProfile = {
+      id: userId,
+      email: user.emailAddresses[0]?.emailAddress,
+      username: `user_${userId.slice(-6)}`, // Default username
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+      avatar_url: user.imageUrl,
+      role: 'explorer', // Default
+      created_at: new Date().toISOString()
+    };
+    const { data, error } = await supabase.from('profiles').insert(newProfile).select().single();
+    if (data) profile = data;
+    if (error) console.error("Auto-creation failed:", error);
+  }
+
+  // 3. Check completion
+  // 'explorer' role means they haven't finished onboarding
+  if (profile && profile.role !== 'explorer' && profile.role !== null && profile.age > 0) {
     redirect('/discovery');
   }
 
