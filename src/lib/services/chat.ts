@@ -1,39 +1,38 @@
-"use server";
+'use server'
 
-import { createClient } from '@/lib/supabase/server';
-import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@/lib/supabase/server'
 
 export interface Message {
-    id: string;
-    match_id: string;
-    sender_id: string;
-    content: string | null;
-    media_url: string | null;
-    is_one_time_view: boolean;
-    viewed_at: string | null;
-    created_at: string;
+    id: string
+    match_id: string
+    sender_id: string
+    content: string | null
+    media_url: string | null
+    is_one_time_view: boolean
+    viewed_at: string | null
+    created_at: string
 }
 
 /**
  * Get messages for a specific match
  */
 export async function getMessages(matchId: string): Promise<Message[]> {
-    const { userId } = await auth();
-    if (!userId) return [];
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const supabase = await createClient();
+    if (!user) return []
 
     // First verify user is part of this match
     const { data: match } = await supabase
         .from('matches')
         .select('*')
         .eq('id', matchId)
-        .or(`user_a.eq.${userId},user_b.eq.${userId}`)
-        .single();
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .single()
 
     if (!match) {
-        console.error('User not authorized for this match');
-        return [];
+        console.error('User not authorized for this match')
+        return []
     }
 
     // Fetch messages
@@ -41,14 +40,14 @@ export async function getMessages(matchId: string): Promise<Message[]> {
         .from('messages')
         .select('*')
         .eq('match_id', matchId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
 
     if (error) {
-        console.error('Error fetching messages:', error);
-        return [];
+        console.error('Error fetching messages:', error)
+        return []
     }
 
-    return data || [];
+    return data || []
 }
 
 /**
@@ -60,14 +59,14 @@ export async function sendMessage(
     mediaUrl?: string,
     isOneTimeView: boolean = false
 ): Promise<Message | null> {
-    const { userId } = await auth();
-    if (!userId) throw new Error('Not authenticated');
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) throw new Error('Not authenticated')
 
     if (!content && !mediaUrl) {
-        throw new Error('Message must have content or media');
+        throw new Error('Message must have content or media')
     }
-
-    const supabase = await createClient();
 
     // Verify user is part of this match
     const { data: match } = await supabase
@@ -75,11 +74,11 @@ export async function sendMessage(
         .select('*')
         .eq('id', matchId)
         .eq('status', 'active')
-        .or(`user_a.eq.${userId},user_b.eq.${userId}`)
-        .single();
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .single()
 
     if (!match) {
-        throw new Error('Match not found or inactive');
+        throw new Error('Match not found or inactive')
     }
 
     // Insert message
@@ -87,46 +86,46 @@ export async function sendMessage(
         .from('messages')
         .insert({
             match_id: matchId,
-            sender_id: userId,
+            sender_id: user.id,
             content,
             media_url: mediaUrl,
             is_one_time_view: isOneTimeView,
         })
         .select()
-        .single();
+        .single()
 
     if (error) {
-        console.error('Error sending message:', error);
-        throw error;
+        console.error('Error sending message:', error)
+        throw error
     }
 
-    return data;
+    return data
 }
 
 /**
  * Mark message as viewed (for one-time view messages)
  */
 export async function markMessageViewed(messageId: string): Promise<void> {
-    const { userId } = await auth();
-    if (!userId) return;
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const supabase = await createClient();
+    if (!user) return
 
     await supabase
         .from('messages')
         .update({ viewed_at: new Date().toISOString() })
         .eq('id', messageId)
-        .neq('sender_id', userId); // Only mark if not the sender
+        .neq('sender_id', user.id) // Only mark if not the sender
 }
 
 /**
  * Get all chats (matches with last message)
  */
 export async function getChats() {
-    const { userId } = await auth();
-    if (!userId) return [];
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const supabase = await createClient();
+    if (!user) return []
 
     // Fetch matches with profiles
     const { data: matches, error } = await supabase
@@ -137,30 +136,29 @@ export async function getChats() {
             user_b_profile:profiles!matches_user_b_fkey(*),
             messages:messages(content, created_at, sender_id, viewed_at)
         `)
-        .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
         .eq('status', 'active')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
 
     if (error) {
-        console.error('Error fetching chats:', error);
-        return [];
+        console.error('Error fetching chats:', error)
+        return []
     }
 
     // Process matches to format for chat list
-    const chats = matches.map(match => {
+    const chats = matches.map((match: any) => {
         // Determine the other user
-        const otherUser = match.user_a === userId ? match.user_b_profile : match.user_a_profile;
+        const otherUser = match.user_a === user.id ? match.user_b_profile : match.user_a_profile
 
         // Find last message (Supabase returns array even if we limit, but here we fetched all. optimization needed for prod)
-        // Actually, let's sort messages in JS since we fetched them. 
         // Ideally we use .limit(1) in the join but Supabase join limits are tricky with multiple rows.
         // For MVP, handling in JS is acceptable.
 
         // The messages array from the join:
         // Note: 'messages' property might be an array or object depending on relationship. It's One-to-Many, so array.
-        const msgs = (match.messages as any[]) || [];
-        msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const lastMsg = msgs[0];
+        const msgs = (match.messages as any[]) || []
+        msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        const lastMsg = msgs[0]
 
         return {
             id: match.id,
@@ -169,11 +167,10 @@ export async function getChats() {
             avatar: otherUser.avatar_url,
             lastMessage: lastMsg?.content || 'New Match!',
             time: lastMsg ? lastMsg.created_at : match.created_at,
-            unread: lastMsg && lastMsg.sender_id !== userId && !lastMsg.viewed_at,
+            unread: lastMsg && lastMsg.sender_id !== user.id && !lastMsg.viewed_at,
             online: false // TODO: Real-time presence
-        };
-    });
+        }
+    })
 
-    return chats.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+    return chats.sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime())
 }
-

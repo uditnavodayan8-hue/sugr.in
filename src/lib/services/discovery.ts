@@ -1,7 +1,6 @@
-"use server";
+'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { auth } from '@clerk/nextjs/server';
 import type { Profile } from './profile';
 
 export interface DiscoveryFilters {
@@ -21,10 +20,11 @@ export async function getDiscoveryFeed(
     filters: DiscoveryFilters = {},
     limit: number = 20
 ): Promise<Profile[]> {
-    const { userId } = await auth();
-    if (!userId) return [];
-
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
+    if (!userId) return [];
 
     // Get user's own profile to check their role and location
     const { data: userProfile } = await supabase
@@ -34,8 +34,6 @@ export async function getDiscoveryFeed(
         .single();
 
     if (!userProfile) return [];
-
-    const currentUser = userProfile as { role: 'provider' | 'protege'; latitude?: number; longitude?: number };
 
     const currentUser = userProfile as { role: 'provider' | 'protege'; latitude?: number; longitude?: number };
 
@@ -79,10 +77,11 @@ export async function createSwipe(
     targetId: string,
     action: 'like' | 'pass' | 'superlike'
 ): Promise<{ matched: boolean; matchId?: string }> {
-    const { userId } = await auth();
-    if (!userId) throw new Error('Not authenticated');
-
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
+    if (!userId) throw new Error('Not authenticated');
 
     // Insert the swipe
     const { error: swipeError } = await supabase
@@ -135,10 +134,11 @@ export async function createSwipe(
  * Get user's matches
  */
 export async function getMatches(): Promise<any[]> {
-    const { userId } = await auth();
-    if (!userId) return [];
-
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+
+    if (!userId) return [];
 
     const { data, error } = await supabase
         .from('matches')

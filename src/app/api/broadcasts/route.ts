@@ -1,11 +1,12 @@
-import { createAdminClient } from '@/lib/supabase/admin';
-import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     try {
-        const { userId } = await auth();
-        if (!userId) {
+        if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -15,12 +16,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Content is required' }, { status: 400 });
         }
 
-        const supabase = createAdminClient();
-
         const { data, error } = await supabase
             .from('broadcasts')
             .insert({
-                user_id: userId,
+                user_id: user.id,
                 content: content.trim(),
             })
             .select()
@@ -40,7 +39,7 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
     try {
-        const supabase = createAdminClient();
+        const supabase = await createClient();
 
         const { data, error } = await supabase
             .from('broadcasts')

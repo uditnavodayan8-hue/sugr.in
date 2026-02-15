@@ -1,9 +1,23 @@
-"use client";
+'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import AuthModal from '@/components/gatekeeper/AuthModal';
 
 export default function WelcomePage() {
+    const [showAuth, setShowAuth] = useState(false);
+    const [initialMode, setInitialMode] = useState<'signin' | 'signup'>('signup');
+
+    const handleJoin = () => {
+        setInitialMode('signup');
+        setShowAuth(true);
+    };
+
+    const handleLogin = () => {
+        setInitialMode('signin');
+        setShowAuth(true);
+    };
+
     return (
         <div className="relative h-screen w-full flex flex-col items-center justify-center bg-background-dark">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-50"></div>
@@ -39,17 +53,23 @@ export default function WelcomePage() {
             </div>
 
             <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center space-y-4 px-8 z-20">
-                <Link
-                    href="/sign-up"
-                    className="w-full max-w-xs bg-primary text-black font-bold py-3.5 rounded-full text-center shadow-[0_0_20px_rgba(242,204,13,0.3)] hover:bg-white hover:scale-[1.02] transition-all duration-300"
+                <button
+                    onClick={handleJoin}
+                    className="w-full max-w-xs bg-primary text-black font-bold py-3.5 rounded-full text-center shadow-[0_0_20px_rgba(242,204,13,0.3)] hover:bg-white hover:scale-[1.02] transition-all duration-300 uppercase tracking-wide text-xs"
                 >
                     Join Now
-                </Link>
+                </button>
                 <div className="flex items-center space-x-2 text-sm text-white/60 font-medium">
                     <span>Already have an account?</span>
-                    <Link href="/sign-in" className="text-primary hover:text-white transition-colors">Log In</Link>
+                    <button onClick={handleLogin} className="text-primary hover:text-white transition-colors">Log In</button>
                 </div>
             </div>
+
+            <AuthModal
+                isOpen={showAuth}
+                onClose={() => setShowAuth(false)}
+                initialMode={initialMode}
+            />
         </div>
     );
 }

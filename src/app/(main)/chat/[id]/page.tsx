@@ -1,19 +1,30 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { useSugr } from '@/context/SugrContext';
 import { Icon } from '@/components/ui/Icon';
 import { reportUser, blockUser } from '@/lib/services/safety';
+import { getMessages, sendMessage, Message } from '@/lib/services/chat';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 import Link from 'next/link';
 
-// ... (existing imports)
+interface UIMessage {
+    id: string;
+    sender: 'me' | 'other';
+    sender_id: string;
+    content: string;
+    isTemp?: boolean;
+    timestamp: string;
+}
 
 export default function ChatDetailPage() {
     const router = useRouter();
     const params = useParams();
     const matchId = params.id as string;
-    const { user } = useUser();
+    const { user } = useSugr();
+    const supabase = createClient();
 
     const [messages, setMessages] = useState<UIMessage[]>([]);
     const [inputText, setInputText] = useState('');
@@ -21,20 +32,124 @@ export default function ChatDetailPage() {
     const [sending, setSending] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
 
-    // ... (existing refs and scrolling)
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+
+    // Load initial messages
+    useEffect(() => {
+        if (!user || !matchId) return;
+
+        const loadMessages = async () => {
+            setLoading(true);
+            const msgs = await getMessages(matchId);
+            const uiMsgs: UIMessage[] = msgs.map(m => ({
+                id: m.id,
+                sender: m.sender_id === user.id ? 'me' : 'other',
+                sender_id: m.sender_id,
+                content: m.content || '',
+                timestamp: m.created_at
+            }));
+            setMessages(uiMsgs);
+            setLoading(false);
+        };
+
+        loadMessages();
+
+        // Subscribe to new messages
+        const channel = supabase
+            .channel(`chat-${matchId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `match_id=eq.${matchId}`
+                },
+                (payload) => {
+                    const newMsg = payload.new as Message;
+                    if (newMsg.sender_id !== user.id) {
+                        setMessages(prev => [...prev, {
+                            id: newMsg.id,
+                            sender: 'other',
+                            sender_id: newMsg.sender_id,
+                            content: newMsg.content || '',
+                            timestamp: newMsg.created_at
+                        }]);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, matchId, supabase]);
+
+    const handleSend = async () => {
+        if (!inputText.trim() || sending || !user) return;
+
+        const content = inputText.trim();
+        setInputText('');
+        setSending(true);
+
+        try {
+            // Optimistic update
+            const tempId = Date.now().toString();
+            setMessages(prev => [...prev, {
+                id: tempId,
+                sender: 'me',
+                sender_id: user.id,
+                content: content,
+                isTemp: true,
+                timestamp: new Date().toISOString()
+            }]);
+
+            const newMsg = await sendMessage(matchId, content);
+
+            if (newMsg) {
+                // Replace temp message
+                setMessages(prev => prev.map(m =>
+                    m.id === tempId ? {
+                        id: newMsg.id,
+                        sender: 'me',
+                        sender_id: newMsg.sender_id,
+                        content: newMsg.content || '',
+                        timestamp: newMsg.created_at
+                    } : m
+                ));
+            }
+        } catch (error) {
+            console.error('Failed to send', error);
+            toast.error('Failed to send message');
+            // Remove temp message on failure
+            setMessages(prev => prev.filter(m => m.isTemp !== true));
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
 
     const handleReport = async () => {
-        // We need the OTHER user's ID. In a real app we'd fetch the match details first.
-        // For now, let's assume we can get it from the first message from 'other', or fetch match details.
-        // IMPROVEMENT: Fetch match details to get the other user ID properly.
         const otherUserId = messages.find(m => m.sender === 'other')?.sender_id;
-
         if (!otherUserId) {
             toast.error('Cannot report user without messages');
             return;
         }
-
-        const reason = prompt('Please provide a reason for reporting this user:');
+        const reason = prompt('Reason for reporting:');
         if (!reason) return;
 
         try {
@@ -48,24 +163,20 @@ export default function ChatDetailPage() {
 
     const handleBlock = async () => {
         const otherUserId = messages.find(m => m.sender === 'other')?.sender_id;
-
         if (!otherUserId) {
             toast.error('Cannot block user without messages');
             return;
         }
-
-        if (!confirm('Are you sure you want to block this user? The chat will be removed.')) return;
+        if (!confirm('Block this user?')) return;
 
         try {
             await blockUser(otherUserId);
             toast.success('User blocked');
-            router.push('/chat'); // Redirect away
+            router.push('/chat');
         } catch (error) {
             toast.error('Failed to block user');
         }
     };
-
-    // ... (existing useEffect and logic)
 
     return (
         <div className="h-screen w-full bg-background-dark flex flex-col">
@@ -104,9 +215,9 @@ export default function ChatDetailPage() {
                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
                     </div>
                 ) : (
-                    messages.map((msg) => (
+                    messages.map((msg, idx) => (
                         <div
-                            key={msg.id}
+                            key={msg.id || idx}
                             className={`flex ${msg.sender === 'me' ? 'flex-row-reverse' : 'items-end'} gap-3 relative group select-none`}
                         >
                             <div className={`${msg.sender === 'me' ? 'bg-primary/10 border border-primary/50 text-white shadow-[0_0_15px_-5px_rgba(242,204,13,0.15)] rounded-br-sm' : 'bg-surface-dark border border-white/10 text-gray-200 rounded-bl-sm'} p-4 rounded-2xl text-sm transition-transform active:scale-[0.98] max-w-[75%] ${msg.isTemp ? 'opacity-70' : ''}`}>
