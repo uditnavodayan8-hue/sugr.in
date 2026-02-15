@@ -34,7 +34,13 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
       </head>
       <body className={clsx(inter.className, playfair.variable, "bg-background text-foreground min-h-screen antialiased font-sans")}>
-        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" afterSignOutUrl="/">
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          afterSignOutUrl="/"
+          signInFallbackRedirectUrl="/"
+          signUpFallbackRedirectUrl="/"
+        >
           <PanicProvider>
             <AuthProvider>
               <SugrProvider>
