@@ -1,22 +1,14 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React from 'react';
+import Link from 'next/link';
 
 export default function WelcomePage() {
-    const router = useRouter();
-
-    useEffect(() => {
-        // Navigate to onboarding after 2.5s
-        const timer = setTimeout(() => router.push('/onboarding'), 2500);
-        return () => clearTimeout(timer);
-    }, [router]);
-
     return (
         <div className="relative h-screen w-full flex flex-col items-center justify-center bg-background-dark">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-50"></div>
 
-            <div className="z-10 flex flex-col items-center animate-fade-in-up">
+            <div className="z-10 flex flex-col items-center animate-fade-in-up mb-20">
                 {/* Logo SVG Simulation */}
                 <div className="relative mb-6">
                     <svg className="drop-shadow-2xl" fill="none" height="100" viewBox="0 0 120 120" width="100" xmlns="http://www.w3.org/2000/svg">
@@ -46,17 +38,17 @@ export default function WelcomePage() {
                 </div>
             </div>
 
-            <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center">
-                <div className="relative h-0.5 w-32 bg-white/10 rounded-full overflow-hidden">
-                    <div className="absolute inset-y-0 left-0 bg-primary w-1/3 rounded-full animate-[loading_2s_ease-in-out_infinite]"></div>
+            <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center space-y-4 px-8 z-20">
+                <Link
+                    href="/sign-up"
+                    className="w-full max-w-xs bg-primary text-black font-bold py-3.5 rounded-full text-center shadow-[0_0_20px_rgba(242,204,13,0.3)] hover:bg-white hover:scale-[1.02] transition-all duration-300"
+                >
+                    Join Now
+                </Link>
+                <div className="flex items-center space-x-2 text-sm text-white/60 font-medium">
+                    <span>Already have an account?</span>
+                    <Link href="/sign-in" className="text-primary hover:text-white transition-colors">Log In</Link>
                 </div>
-                <style jsx>{`
-          @keyframes loading { 
-            0% { left: -35%; } 
-            50% { left: 100%; } 
-            100% { left: 100%; } 
-          }
-        `}</style>
             </div>
         </div>
     );
