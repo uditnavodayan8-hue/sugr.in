@@ -14,7 +14,7 @@ export interface Profile {
     video_url: string | null;
     // Dossier Fields
     sugr_index: number; // 0-100
-    lifestyle_tier: 'Minimalist' | 'Moderate' | 'High' | 'Ultra-High' | null;
+    lifestyle_tier: 'Minimalist' | 'Moderate' | 'High' | 'Ultra-High' | 'elite' | 'Elite' | null;
     location_lat?: number;
     location_lng?: number;
     dist_meters?: number; // Distance from current user (in meters)
