@@ -26,67 +26,50 @@ export async function getDiscoveryFeed(
 
     const supabase = await createClient();
 
-    // Get user's own profile to check their role
+    // Get user's own profile to check their role and location
     const { data: userProfile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('role, latitude, longitude')
         .eq('id', userId)
         .single();
 
     if (!userProfile) return [];
 
-    // Build query - show opposite role
-    let query = supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', userId) // Exclude self
-        .not('role', 'is', null); // Must have a role
+    const currentUser = userProfile as { role: 'provider' | 'protege'; latitude?: number; longitude?: number };
 
-    // Filter by opposite role
+    const currentUser = userProfile as { role: 'provider' | 'protege'; latitude?: number; longitude?: number };
+
+    // Determine target role
+    let targetRole: 'provider' | 'protege' | null = null;
     if (userProfile.role === 'provider') {
-        query = query.eq('role', 'protege');
+        targetRole = 'protege';
     } else if (userProfile.role === 'protege') {
-        query = query.eq('role', 'provider');
+        targetRole = 'provider';
     }
 
-    // Age filter
-    if (filters.ageMin) {
-        query = query.gte('age', filters.ageMin);
-    }
-    if (filters.ageMax) {
-        query = query.lte('age', filters.ageMax);
-    }
+    // Use RPC for smart discovery
+    // Default to San Francisco if no location (or handle client-side)
+    // In a real app, you'd pass the user's current location from client or store it in profile
+    const lat = userProfile.latitude || 37.7749;
+    const long = userProfile.longitude || -122.4194;
 
-    // Verified only filter
-    if (filters.verifiedOnly) {
-        query = query.eq('is_verified', true);
-    }
-
-    // Get already swiped users to exclude
-    const { data: swipes } = await supabase
-        .from('swipes')
-        .select('target_id')
-        .eq('actor_id', userId);
-
-    if (swipes && swipes.length > 0) {
-        const swipedIds = swipes.map(s => s.target_id);
-        query = query.not('id', 'in', `(${swipedIds.join(',')})`);
-    }
-
-    // Order by sugr_index (highest first) and limit results
-    query = query
-        .order('sugr_index', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-    const { data, error } = await query;
+    const { data, error } = await supabase.rpc('get_nearby_profiles', {
+        lat,
+        long,
+        radius_km: filters.maxDistance || 10000, // Default to global-ish if not set
+        min_age: filters.ageMin || 18,
+        max_age: filters.ageMax || 100,
+        target_role: targetRole,
+        limit_count: limit,
+        offset_count: 0 // TODO: Add pagination support
+    });
 
     if (error) {
         console.error('Error fetching discovery feed:', error);
         return [];
     }
 
-    return data || [];
+    return (data || []) as Profile[];
 }
 
 /**

@@ -19,6 +19,8 @@ interface SugrContextType {
     profile: Profile | null;
     notifications: AccessRequest[];
     unreadCount: number;
+    unreadMatches?: number;
+    unreadMessages?: number;
     loading: boolean;
     refreshProfile: () => Promise<void>;
     clearNotifications: () => void;
@@ -29,9 +31,10 @@ const SugrContext = createContext<SugrContextType | null>(null);
 const PRESENCE_INTERVAL = 60000; // 60 seconds
 
 export function SugrProvider({ children }: { children: ReactNode }) {
-    // Consume AuthContext for user/profile state
     const { user, profile, refreshProfile } = useAuth();
     const [notifications, setNotifications] = useState<AccessRequest[]>([]);
+    const [unreadMatches, setUnreadMatches] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const supabase = getSupabaseClient();
@@ -48,6 +51,8 @@ export function SugrProvider({ children }: { children: ReactNode }) {
     // Clear notifications
     const clearNotifications = useCallback(() => {
         setNotifications([]);
+        setUnreadMatches(0); // Optional: clear on view
+        setUnreadMessages(0);
     }, []);
 
     // Effect for Real-time Notifications & Presence
@@ -56,6 +61,8 @@ export function SugrProvider({ children }: { children: ReactNode }) {
 
         if (!user) {
             setNotifications([]);
+            setUnreadMatches(0);
+            setUnreadMessages(0);
             setLoading(false);
             return;
         }
@@ -63,7 +70,7 @@ export function SugrProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         if (mounted) pingPresence();
 
-        // Real-time listener for incoming access requests
+        // Real-time listener
         const channel = supabase.channel(`user-notifications-${user.id}`)
             .on(
                 'postgres_changes',
@@ -93,6 +100,37 @@ export function SugrProvider({ children }: { children: ReactNode }) {
                     const request = payload.new as unknown as AccessRequest;
                     if (request.status !== 'pending') {
                         setNotifications(prev => [request, ...prev]);
+                    }
+                }
+            )
+            // Listen for New Matches
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'matches'
+                },
+                (payload: { new: Record<string, unknown> }) => {
+                    const match = payload.new as any;
+                    if (match.user_a === user.id || match.user_b === user.id) {
+                        if (mounted) setUnreadMatches(prev => prev + 1);
+                    }
+                }
+            )
+            // Listen for New Messages
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages'
+                },
+                (payload: { new: Record<string, unknown> }) => {
+                    const msg = payload.new as any;
+                    // If I am NOT the sender, it's for me (assuming RLS allows me to receive it)
+                    if (msg.sender_id !== user.id) {
+                        if (mounted) setUnreadMessages(prev => prev + 1);
                     }
                 }
             )
@@ -126,7 +164,9 @@ export function SugrProvider({ children }: { children: ReactNode }) {
             user,
             profile,
             notifications,
-            unreadCount: notifications.length,
+            unreadCount: notifications.length, // Legacy
+            unreadMatches,
+            unreadMessages,
             loading,
             refreshProfile,
             clearNotifications,

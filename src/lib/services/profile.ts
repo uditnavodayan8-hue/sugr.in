@@ -17,6 +17,8 @@ export interface ProfileData {
     age_preference?: { min: number; max: number };
     interests?: string[];
     is_verified?: boolean;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface Profile extends ProfileData {
@@ -24,6 +26,7 @@ export interface Profile extends ProfileData {
     created_at: string;
     last_seen: string;
     sugr_index: number;
+    distance_km?: number; // Added from RPC
 }
 
 /**

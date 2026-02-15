@@ -5,8 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 
+import { useSugr } from '@/context/SugrContext';
+
 export default function BottomNav() {
     const pathname = usePathname();
+    const { unreadMessages, unreadMatches } = useSugr();
+
+    // Combined count for the Chat tab
+    const totalChatUnread = (unreadMessages || 0) + (unreadMatches || 0);
 
     const isActive = (path: string) => {
         if (path === '/discovery' && (pathname === '/discovery' || pathname.startsWith('/profile/'))) {
@@ -52,8 +58,13 @@ export default function BottomNav() {
                 >
                     <div className="relative">
                         <Icon name="chat_bubble" className="text-2xl transition-all" filled={isActive('/chat')} />
-                        {/* Keeping the notification dot static for now, can be dynamic later */}
-                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border border-background-dark"></span>
+                        {totalChatUnread > 0 && (
+                            <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 rounded-full border border-background-dark flex items-center justify-center">
+                                <span className="text-[9px] font-bold text-white leading-none">
+                                    {totalChatUnread > 99 ? '99+' : totalChatUnread}
+                                </span>
+                            </span>
+                        )}
                     </div>
                     <span className="text-[10px] font-medium mt-1">Chats</span>
                 </Link>

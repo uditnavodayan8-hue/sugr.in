@@ -4,16 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { Icon } from '@/components/ui/Icon';
+import { reportUser, blockUser } from '@/lib/services/safety';
 import Link from 'next/link';
-import { getMessages, sendMessage, type Message } from '@/lib/services/chat';
-import { subscribeToMessages } from '@/lib/services/chat.client';
-import { toast } from 'sonner';
 
-// Extended message interface for UI state
-interface UIMessage extends Message {
-    sender: 'me' | 'other';
-    isTemp?: boolean;
-}
+// ... (existing imports)
 
 export default function ChatDetailPage() {
     const router = useRouter();
@@ -25,96 +19,53 @@ export default function ChatDetailPage() {
     const [inputText, setInputText] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    // ... (existing refs and scrolling)
 
-    // Scroll to bottom on new messages
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    const handleReport = async () => {
+        // We need the OTHER user's ID. In a real app we'd fetch the match details first.
+        // For now, let's assume we can get it from the first message from 'other', or fetch match details.
+        // IMPROVEMENT: Fetch match details to get the other user ID properly.
+        const otherUserId = messages.find(m => m.sender === 'other')?.sender_id;
 
-    useEffect(() => {
-        if (!user || !matchId) return;
-
-        loadMessages();
-
-        const unsubscribe = subscribeToMessages(matchId, (newMessage) => {
-            if (newMessage.sender_id !== user.id) {
-                // Add received message
-                setMessages(prev => [...prev, { ...newMessage, sender: 'other' }]);
-                scrollToBottom();
-            }
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, [user, matchId]);
-
-    const loadMessages = async () => {
-        if (!user) return;
-        try {
-            const data = await getMessages(matchId);
-            setMessages(data.map(m => ({
-                ...m,
-                sender: m.sender_id === user.id ? 'me' : 'other'
-            })));
-            setTimeout(scrollToBottom, 100);
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to load messages');
-        } finally {
-            setLoading(false);
+        if (!otherUserId) {
+            toast.error('Cannot report user without messages');
+            return;
         }
-    };
 
-    const handleSend = async () => {
-        if (!inputText.trim() || !user) return;
-
-        const text = inputText.trim();
-        setInputText('');
-        setSending(true);
-
-        // Optimistic update
-        const tempId = Date.now().toString();
-        const tempMsg: UIMessage = {
-            id: tempId,
-            match_id: matchId,
-            sender_id: user.id,
-            content: text,
-            media_url: null,
-            is_one_time_view: false,
-            viewed_at: null,
-            created_at: new Date().toISOString(),
-            sender: 'me',
-            isTemp: true
-        };
-
-        setMessages(prev => [...prev, tempMsg]);
-        scrollToBottom();
+        const reason = prompt('Please provide a reason for reporting this user:');
+        if (!reason) return;
 
         try {
-            const sentMsg = await sendMessage(matchId, text);
-            if (sentMsg) {
-                // Replace temp message with real one
-                setMessages(prev => prev.map(m => m.id === tempId ? { ...sentMsg, sender: 'me' } : m));
-            }
+            await reportUser(otherUserId, reason);
+            toast.success('User reported.');
+            setShowMenu(false);
         } catch (error) {
-            console.error(error);
-            toast.error('Failed to send message');
-            // Remove temp message
-            setMessages(prev => prev.filter(m => m.id !== tempId));
-        } finally {
-            setSending(false);
+            toast.error('Failed to report user');
         }
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+    const handleBlock = async () => {
+        const otherUserId = messages.find(m => m.sender === 'other')?.sender_id;
+
+        if (!otherUserId) {
+            toast.error('Cannot block user without messages');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to block this user? The chat will be removed.')) return;
+
+        try {
+            await blockUser(otherUserId);
+            toast.success('User blocked');
+            router.push('/chat'); // Redirect away
+        } catch (error) {
+            toast.error('Failed to block user');
         }
     };
+
+    // ... (existing useEffect and logic)
 
     return (
         <div className="h-screen w-full bg-background-dark flex flex-col">
@@ -122,11 +73,28 @@ export default function ChatDetailPage() {
                 <button onClick={() => router.back()} className="text-gray-400 hover:text-white"><Icon name="arrow_back_ios_new" /></button>
                 <div className="flex flex-col items-center">
                     <div className="mt-1 text-center">
-                        <h1 className="text-sm font-bold text-white">Chat</h1>
+                        <Link href={`/profile/${messages.find(m => m.sender === 'other')?.sender_id || '#'}`} className="text-sm font-bold text-white hover:underline">
+                            Chat
+                        </Link>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/5"><Icon name="more_horiz" /></button>
+                <div className="relative">
+                    <button
+                        onClick={() => setShowMenu(!showMenu)}
+                        className="text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/5"
+                    >
+                        <Icon name="more_horiz" />
+                    </button>
+                    {showMenu && (
+                        <div className="absolute right-0 top-10 w-40 bg-surface-dark border border-white/10 rounded-xl shadow-xl py-1 z-50">
+                            <button onClick={handleReport} className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 flex items-center gap-2">
+                                <Icon name="flag" className="text-xs text-gray-400" /> Report
+                            </button>
+                            <button onClick={handleBlock} className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-white/5 flex items-center gap-2 border-t border-white/5">
+                                <Icon name="block" className="text-xs" /> Block
+                            </button>
+                        </div>
+                    )}
                 </div>
             </header>
 

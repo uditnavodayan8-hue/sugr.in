@@ -15,6 +15,29 @@ export function RealtimeEngine() {
             .on(
                 'postgres_changes',
                 {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'matches'
+                },
+                async (payload: any) => {
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (!user) return
+
+                    if (payload.new.user_a === user.id || payload.new.user_b === user.id) {
+                        toast.success("It's a Match! ❤️", {
+                            description: "You have a new connection.",
+                            action: {
+                                label: 'Chat',
+                                onClick: () => router.push('/chat')
+                            }
+                        })
+                        if (navigator.vibrate) navigator.vibrate([100, 50, 100])
+                    }
+                }
+            )
+            .on(
+                'postgres_changes',
+                {
                     event: '*',
                     schema: 'public',
                     table: 'handshakes'
