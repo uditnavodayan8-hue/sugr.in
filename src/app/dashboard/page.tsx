@@ -58,34 +58,6 @@ export default async function DashboardPage() {
         redirect('/onboarding');
     }
 
-    // 3. Normal Data Fetching
-    const token = await getToken({ template: 'supabase' });
-    const supabase = await createClient(token || undefined);
-
-    // Fetch all profiles for the swipe feed (not filtering by role)
-    const { data: profiles, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*, photos:profile_photos(*)')
-        .neq('id', userId)
-        // .not('avatar_url', 'is', null) // Temporarily allow no-avatar profiles for testing
-        // .order('last_seen', { ascending: false }) // Column likely missing
-        .limit(20);
-
-    if (fetchError) {
-        console.error("Error fetching profiles:", fetchError);
-    }
-
-    const initialProfiles = (profiles || []) as unknown as Profile[];
-    const dailyPicks = await getDailyPicks(userId, supabase);
-    const streakData = await checkDailyStreak(userId, supabase);
-
-    return (
-        <DashboardContent
-            initialProfiles={initialProfiles}
-            currentUserId={userId}
-            dailyPicks={dailyPicks}
-            streak={streakData?.current_streak || 0}
-            userHasAvatar={!!currentProfile?.avatar_url}
-        />
-    );
+    // 3. Redirect to Discovery (New Design Feed)
+    redirect('/discovery');
 }
