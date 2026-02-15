@@ -12,6 +12,7 @@ export async function updateProfile(data: {
     name: string;
     age: number;
     city: string;
+    avatar_url?: string;
 }) {
     const { userId } = await auth();
     if (!userId) {
@@ -31,6 +32,9 @@ export async function updateProfile(data: {
                 name: data.name,
                 age: data.age,
                 city: data.city,
+                avatar_url: data.avatar_url,
+                is_verified: false, // Reset verification on update? Or keep as is.
+                // Assuming photos array might be needed later, but for now avatar_url is primary
             })
             .eq('id', userId);
 

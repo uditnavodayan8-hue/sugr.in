@@ -52,6 +52,7 @@ export default function OnboardingForm() {
                 name: formData.name,
                 age: parseInt(formData.age),
                 city: formData.city,
+                avatar_url: photoUrl,
             });
 
             if (result.success) {
