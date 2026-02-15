@@ -1,12 +1,13 @@
 'use server';
 
-import { createAdminClient } from '@/lib/supabase/admin';
-import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export async function uploadAvatar(formData: FormData) {
-    const { userId } = await auth();
-    if (!userId) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
         return { success: false, error: 'Unauthorized' };
     }
 
@@ -16,18 +17,13 @@ export async function uploadAvatar(formData: FormData) {
             return { success: false, error: 'No file provided' };
         }
 
-        const supabase = createAdminClient();
         const fileExt = file.name.split('.').pop();
-        const fileName = `${userId}/avatar.${fileExt}`;
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-        // 1. Upload file (Admin, bypass RLS)
-        // Note: We need to convert File to ArrayBuffer for Supabase Admin upload in Node env
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
+        // 1. Upload file
         const { error: uploadError } = await supabase.storage
             .from('avatars')
-            .upload(fileName, buffer, {
+            .upload(fileName, file, {
                 contentType: file.type,
                 upsert: true
             });
@@ -46,7 +42,7 @@ export async function uploadAvatar(formData: FormData) {
         const { error: updateError } = await supabase
             .from('profiles')
             .update({ avatar_url: publicUrl })
-            .eq('id', userId);
+            .eq('id', user.id);
 
         if (updateError) {
             console.error('Profile update failed:', updateError);

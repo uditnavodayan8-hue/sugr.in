@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Step1_Role from './Step1_Role';
 import Step2_Dossier from './Step2_Dossier';
-import Step3_Photos from './Step3_Photos'; // Assuming you created this
-import { updateProfile } from '@/app/actions/profile'; // Use the generic update
+import Step3_Photos from './Step3_Photos';
+import { updateProfile } from '@/app/actions/profile';
 import { toast } from 'sonner';
 
 type OnboardingStep = 'role' | 'dossier' | 'photos';
@@ -26,8 +26,33 @@ export default function OnboardingForm() {
         tier: 'executive' as 'executive' | 'elite' | 'premium',
     });
 
-    const handleRoleSelect = (role: 'provider' | 'protege') => {
+    // Helper for Haptics
+    const triggerHaptic = () => {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(20); // Light tap
+        }
+    };
+
+    const saveStep = async (data: Record<string, any>) => {
+        const payload = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+            payload.append(key, value.toString());
+        });
+
+        const result = await updateProfile(payload);
+        if (!result.success) {
+            toast.error("Sync failed", { description: "Could not save progress" });
+        }
+        return result.success;
+    };
+
+    const handleRoleSelect = async (role: 'provider' | 'protege') => {
+        triggerHaptic();
         setFormData(prev => ({ ...prev, role }));
+
+        // Immediate Save
+        await saveStep({ role });
+
         setStep('dossier');
     };
 
@@ -35,35 +60,47 @@ export default function OnboardingForm() {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleDossierSubmit = () => {
-        setStep('photos');
+    const handleDossierSubmit = async () => {
+        triggerHaptic();
+        setLoading(true);
+
+        // Save Dossier Data
+        const success = await saveStep({
+            name: formData.name,
+            username: formData.username, // mapping might be needed if DB col is different
+            age: formData.age,
+            city: formData.city,
+            bio: formData.bio,
+            lifestyle_tier: formData.tier
+        });
+
+        setLoading(false);
+        if (success) setStep('photos');
     };
 
     const handlePhotoComplete = async (photoUrl: string) => {
         setLoading(true);
         try {
-            // Final Submission
-            // Final Submission
-            const result = await updateProfile({
-                role: formData.role as string,
-                username: formData.username,
-                lifestyle_tier: formData.tier,
-                bio: formData.bio,
-                name: formData.name,
-                age: parseInt(formData.age),
-                city: formData.city,
-                avatar_url: photoUrl,
-            });
+            // Final Save with Avatar
+            const payload = new FormData();
+            payload.append('avatar_url', photoUrl);
+            // Ensure status is active/complete if you have such a flag, or just presence of data is enough.
+
+            const result = await updateProfile(payload);
 
             if (result.success) {
-                router.push('/dashboard');
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                    navigator.vibrate([50, 50, 50]); // Success pattern
+                }
+                toast.success("Profile Activated");
+                router.push('/discovery'); // Redirect to discovery instead of dashboard for flow
             } else {
-                toast.error('Failed to create profile', { description: result.error || 'Please try again' });
-                setLoading(false);
+                toast.error('Failed to finish', { description: result.error });
             }
         } catch (error: any) {
             console.error('Profile update error:', error);
-            toast.error('Failed to create profile', { description: error.message });
+            toast.error('Error', { description: error.message });
+        } finally {
             setLoading(false);
         }
     };
@@ -85,7 +122,7 @@ export default function OnboardingForm() {
                             data={formData}
                             onChange={handleDossierChange}
                             onSubmit={handleDossierSubmit}
-                            loading={false}
+                            loading={loading}
                             onBack={() => setStep('role')}
                         />
                     )}

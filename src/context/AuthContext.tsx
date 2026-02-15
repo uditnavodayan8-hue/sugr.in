@@ -1,7 +1,6 @@
 'use client';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useUser, useSession, useClerk } from '@clerk/nextjs';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import { getProfile, Profile } from '@/lib/services/profiles';
 
 interface AuthContextType {
@@ -17,103 +16,75 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const { user: clerkUser, isLoaded: isClerkLoaded } = useUser();
-    const { session } = useSession();
-    const { signOut: clerkSignOut } = useClerk();
-
+    const [user, setUser] = useState<any | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Sync Clerk -> Supabase
+    // Create client once
+    const supabase = createClient();
+
+    const refreshProfile = async (uid?: string) => {
+        const userId = uid || user?.id;
+        if (!userId) return;
+
+        const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+
+        if (data) setProfile(data);
+    };
+
     useEffect(() => {
-        const syncUser = async () => {
-            if (!isClerkLoaded) return;
+        const initAuth = async () => {
+            // Get initial session
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
 
-            if (!clerkUser) {
-                setProfile(null);
-                setLoading(false);
-                return;
+            if (session?.user) {
+                await refreshProfile(session.user.id);
             }
+            setLoading(false);
 
-            try {
-                // 1. Get JWT from Clerk for Supabase
-                const token = await session?.getToken({ template: 'supabase' });
-                if (!token) throw new Error('No Supabase Token');
-
-                // 2. Initialize authenticated Supabase client
-                const supabase = getSupabaseClient(token);
-
-                // 3. Check if profile exists
-                const { data: existingProfile } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', clerkUser.id)
-                    .single();
-
-                if (existingProfile) {
-                    setProfile(existingProfile);
+            // Listen for changes
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+                setUser(session?.user ?? null);
+                if (session?.user) {
+                    await refreshProfile(session.user.id);
                 } else {
-                    // 4. Create Profile (First Time Login)
-                    const newProfile = {
-                        id: clerkUser.id,
-                        username: `user_${clerkUser.id.slice(-6)}`,
-                        full_name: clerkUser.fullName || '',
-                        avatar_url: clerkUser.imageUrl,
-                        role: 'explorer', // Default role
-                        created_at: new Date().toISOString(),
-                    };
-
-                    const { data: createdProfile, error } = await supabase
-                        .from('profiles')
-                        .insert(newProfile)
-                        .select()
-                        .single();
-
-                    if (!error && createdProfile) {
-                        setProfile(createdProfile);
-                    }
+                    setProfile(null);
                 }
-            } catch (err) {
-                console.error('Auth Sync Error:', err);
-            } finally {
                 setLoading(false);
-            }
+            });
+
+            return () => subscription.unsubscribe();
         };
 
-        syncUser();
-    }, [clerkUser, isClerkLoaded, session]);
+        initAuth();
+    }, []);
 
     const signOut = async () => {
-        await clerkSignOut();
+        await supabase.auth.signOut();
         setProfile(null);
         window.location.href = '/';
     };
 
-    const refreshProfile = async () => {
-        if (!clerkUser || !session) return;
-        const token = await session.getToken({ template: 'supabase' });
-        if (token) {
-            const supabase = getSupabaseClient(token);
-            const { data } = await supabase.from('profiles').select('*').eq('id', clerkUser.id).single();
-            if (data) setProfile(data);
-        }
-    };
-
     const updateProfile = async (data: Partial<Profile>) => {
-        if (!clerkUser || !session) return;
-        const token = await session.getToken({ template: 'supabase' });
-        if (token) {
-            const supabase = getSupabaseClient(token);
-            await supabase.from('profiles').update(data).eq('id', clerkUser.id);
-            refreshProfile();
+        if (!user) return;
+        const { error } = await supabase.from('profiles').update(data).eq('id', user.id);
+        if (!error) {
+            await refreshProfile();
+        } else {
+            console.error("Profile update failed", error);
         }
     }
 
     return (
         <AuthContext.Provider value={{
-            user: clerkUser,
+            user,
             profile,
-            loading: !isClerkLoaded || loading,
+            loading,
             signOut,
             refreshProfile,
             updateProfile

@@ -1,34 +1,60 @@
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+export async function middleware(request: NextRequest) {
+    let response = NextResponse.next({
+        request: {
+            headers: request.headers,
+        },
+    })
 
-const isPublicRoute = createRouteMatcher([
-    '/auth(.*)',
-    '/welcome(.*)',
-    '/sign-in(.*)',
-    '/sign-up(.*)',
-    '/onboarding(.*)',
-    '/api(.*)',
-    '/'
-]);
-
-export default clerkMiddleware(async (auth, req) => {
-    if (!isPublicRoute(req)) {
-        const { userId } = await auth();
-        if (!userId) {
-            // Redirect to our custom sign-in page, NOT Clerk's hosted one
-            const signInUrl = new URL('/sign-in', req.url);
-            signInUrl.searchParams.set('redirect_url', req.url);
-            return NextResponse.redirect(signInUrl);
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() {
+                    return request.cookies.getAll()
+                },
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                    response = NextResponse.next({
+                        request: {
+                            headers: request.headers,
+                        },
+                    })
+                    cookiesToSet.forEach(({ name, value, options }) =>
+                        response.cookies.set(name, value, options)
+                    )
+                },
+            },
         }
+    )
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    // Define public routes
+    const isPublicRoute =
+        request.nextUrl.pathname === '/' ||
+        request.nextUrl.pathname.startsWith('/welcome') ||
+        request.nextUrl.pathname.startsWith('/sign-in') ||
+        request.nextUrl.pathname.startsWith('/sign-up') ||
+        request.nextUrl.pathname.startsWith('/auth') ||
+        request.nextUrl.pathname.startsWith('/api')
+
+    if (!user && !isPublicRoute) {
+        const signInUrl = new URL('/sign-in', request.url)
+        signInUrl.searchParams.set('redirect_url', request.nextUrl.pathname)
+        return NextResponse.redirect(signInUrl)
     }
-});
+
+    return response
+}
 
 export const config = {
     matcher: [
-        // Skip Next.js internals and all static files, unless found in search params
-        '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        // Always run for API routes
-        '/(api|trpc)(.*)',
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
-};
+}

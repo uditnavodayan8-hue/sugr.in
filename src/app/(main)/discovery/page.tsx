@@ -6,6 +6,23 @@ import { Icon } from '@/components/ui/Icon';
 import { getDiscoveryFeed, createSwipe, type DiscoveryFilters } from '@/lib/services/discovery';
 import { type Profile } from '@/lib/services/profile';
 import { toast } from 'sonner';
+import CreateShout from '@/components/discovery/CreateShout';
+import { createClient } from '@/lib/supabase/client';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// --- Types ---
+interface Ad {
+    id: string;
+    content: string | null;
+    media_url: string | null;
+    created_at: string;
+    user_id: string;
+    profiles?: {
+        display_name: string;
+        avatar_url: string;
+        tier: string;
+    }
+}
 
 // --- Filters View ---
 const FiltersView: React.FC<{
@@ -93,13 +110,57 @@ export default function DiscoveryPage() {
     const router = useRouter();
     const [showFilters, setShowFilters] = useState(false);
     const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [ads, setAds] = useState<Ad[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState<DiscoveryFilters>({});
+    const supabase = createClient();
 
     useEffect(() => {
         loadFeed();
+        loadAds();
+        setupRealtime();
     }, [filters]);
+
+    const setupRealtime = () => {
+        const channel = supabase
+            .channel('public:ads')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'ads' },
+                async (payload) => {
+                    // Fetch full ad details including profile
+                    const { data } = await supabase
+                        .from('ads')
+                        .select('*, profiles(display_name, avatar_url, tier)')
+                        .eq('id', payload.new.id)
+                        .single();
+
+                    if (data) {
+                        setAds(prev => [data as unknown as Ad, ...prev]);
+                        toast.success("New Shout nearby!", { position: 'top-center' });
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    };
+
+    const loadAds = async () => {
+        // Simple geo-query placeholder - fetch all for now, filter later or rely on RLS/PostGIS if setup
+        const { data, error } = await supabase
+            .from('ads')
+            .select('*, profiles(display_name, avatar_url, tier)')
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (!error && data) {
+            setAds(data as unknown as Ad[]);
+        }
+    };
 
     const loadFeed = async () => {
         setLoading(true);
@@ -173,14 +234,15 @@ export default function DiscoveryPage() {
                 >
                     Adjust Filters
                 </button>
+                <CreateShout />
             </div>
         );
     }
 
     return (
         <div className="relative h-screen w-full bg-background-dark flex flex-col overflow-hidden">
-            <header className="absolute top-0 left-0 right-0 z-40 px-6 pt-12 pb-2 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent">
-                <button onClick={() => setShowFilters(true)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+            <header className="absolute top-0 left-0 right-0 z-40 px-6 pt-12 pb-2 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                <button onClick={() => setShowFilters(true)} className="p-2 rounded-full hover:bg-white/10 transition-colors pointer-events-auto">
                     <Icon name="tune" className="text-gray-300" />
                 </button>
                 <div className="flex items-center gap-1">
@@ -189,11 +251,47 @@ export default function DiscoveryPage() {
                     </div>
                     <h1 className="text-xl font-bold tracking-tight text-primary font-serif">SUGR</h1>
                 </div>
-                <button className="p-2 rounded-full hover:bg-white/10 relative">
+                <button className="p-2 rounded-full hover:bg-white/10 relative pointer-events-auto">
                     <Icon name="notifications" className="text-gray-300" />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_#f2cc0d]"></span>
                 </button>
             </header>
+
+            {/* Live Feed Ticker / Ads */}
+            <div className="absolute top-24 left-0 right-0 z-30 px-4 pointer-events-none">
+                <div className="flex flex-col gap-2">
+                    <AnimatePresence>
+                        {ads.slice(0, 2).map((ad) => (
+                            <motion.div
+                                key={ad.id}
+                                initial={{ opacity: 0, y: -20, height: 0 }}
+                                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="bg-black/80 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-lg pointer-events-auto"
+                            >
+                                <div className="flex gap-3">
+                                    {ad.profiles?.avatar_url && (
+                                        <img src={ad.profiles.avatar_url} className="w-10 h-10 rounded-full object-cover border border-[#F7E7CE]/50" />
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex justify-between items-baseline">
+                                            <span className="text-[#F7E7CE] font-serif text-sm truncate">{ad.profiles?.display_name || 'Anonymous'}</span>
+                                            <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{ad.profiles?.tier}</span>
+                                        </div>
+                                        <p className="text-white text-xs line-clamp-2">{ad.content}</p>
+                                    </div>
+                                </div>
+                                {ad.media_url && (
+                                    <div className="mt-2 rounded-lg overflow-hidden h-32 relative">
+                                        <img src={ad.media_url} className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                    </div>
+                                )}
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            </div>
 
             <main className="flex-1 relative flex flex-col justify-center items-center w-full h-full overflow-hidden">
                 <div className="w-full max-w-md flex flex-col items-center justify-center px-4 pt-20 pb-24 h-full relative">
@@ -215,7 +313,7 @@ export default function DiscoveryPage() {
                             <img
                                 src={currentProfile.avatar_url || "https://images.unsplash.com/photo-1542596594-649edbc13630?q=80&w=1000&auto=format&fit=crop"}
                                 alt={currentProfile.name || 'User'}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/90"></div>
 
@@ -298,6 +396,8 @@ export default function DiscoveryPage() {
                     </div>
                 </div>
             </main>
+
+            <CreateShout />
         </div>
     );
 };
